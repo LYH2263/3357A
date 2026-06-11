@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教学资料库 - SchoolSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .nav-link.active {
+            color: var(--primary-color) !important;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        .sidebar { width: 260px; background: #f8f9fa; border-radius: 8px; padding: 16px; }
+        .folder-tree { max-height: calc(100vh - 200px); overflow-y: auto; }
+        .tree-item { cursor: pointer; user-select: none; padding: 8px 10px; border-radius: 6px; }
+        .tree-item:hover { background: #f0f4ff; }
+        .tree-item.active { background: #e7f1ff; color: #0d6efd; font-weight: 500; }
+        .tree-toggle { display: inline-block; width: 18px; margin-right: 4px; }
+        .folder-icon { color: #ffc107; margin-right: 6px; }
+        .file-card { transition: all 0.2s; }
+        .file-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .file-card.pinned { border-color: #ffc107; background: #fffbeb; }
+        .file-card.pinned .pin-btn { color: #ffc107; }
+        .breadcrumb-item a { text-decoration: none; }
+        .toolbar { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-state i { font-size: 48px; margin-bottom: 16px; color: #dee2e6; }
+        .file-type-pdf { color: #dc3545; }
+        .file-type-doc { color: #0d6efd; }
+        .file-type-zip { color: #fd7e14; }
+        .file-type-image { color: #198754; }
+        .file-type-video { color: #6f42c1; }
+        .file-type-audio { color: #0dcaf0; }
+        .file-type-other { color: #6c757d; }
+        .pin-btn { transition: all 0.2s; }
+        .pin-btn:hover { transform: scale(1.1); }
+        .tab-btn { border: none; background: none; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: #0d6efd; border-bottom-color: #0d6efd; font-weight: 500; }
+        .pinned-badge { background: #ffc107; color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-primary" href="student.html">SchoolSystem</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">首页</li>
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">课程介绍</li>
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">教学内容</li>
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">实验内容</li>
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">互动交流</li>
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">我的成绩</li>
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">教师评教</li>
+                    <li class="nav-link px-3" role="button" onclick="window.location.href='student.html'">教学日历</li>
+                    <li class="nav-link px-3 active" role="button">教学资料库</li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <span id="userInfo" class="me-3 text-muted small"></span>
+                    <button class="btn btn-outline-danger btn-sm" onclick="api.clearSession()">登出</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold"><i class="bi bi-folder-symlink text-primary me-2"></i>教学资料库</h4>
+            <div>
+                <button class="btn btn-outline-primary btn-sm" onclick="loadData()"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
+            </div>
+        </div>
+
+        <div class="d-flex mb-3 border-bottom">
+            <button class="tab-btn active" onclick="switchTab('browse')" id="tabBrowse">
+                <i class="bi bi-folder2-open me-1"></i>文件浏览
+            </button>
+            <button class="tab-btn" onclick="switchTab('pinned')" id="tabPinned">
+                <i class="bi bi-pin-angle me-1"></i>我的置顶
+                <span class="badge bg-warning text-dark" id="pinnedCount" style="display:none;">0</span>
+            </button>
+        </div>
+
+        <div id="browseSection">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="sidebar">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <strong>目录导航</strong>
+                        </div>
+                        <div class="folder-tree" id="folderTree">
+                            <div class="text-center py-3 text-muted small">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-9">
+                    <div class="toolbar d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-0" id="breadcrumb">
+                                    <li class="breadcrumb-item active" onclick="navigateToFolder(0)">根目录</li>
+                                </ol>
+                            </nav>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <div class="input-group" style="width: 220px;">
+                                <input type="text" id="searchKeyword" class="form-control form-control-sm" placeholder="搜索文件名...">
+                                <button class="btn btn-outline-secondary btn-sm" onclick="searchFiles()"><i class="bi bi-search"></i></button>
+                            </div>
+                            <select class="form-select form-select-sm" id="typeFilter" style="width: 120px;" onchange="searchFiles()">
+                                <option value="all">全部类型</option>
+                                <option value="pdf">PDF</option>
+                                <option value="doc">文档</option>
+                                <option value="zip">压缩包</option>
+                                <option value="image">图片</option>
+                                <option value="video">视频</option>
+                                <option value="audio">音频</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body min-vh-50" id="fileList">
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-folder-open fs-1 d-block mb-3"></i>
+                                请选择一个目录查看文件
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pinnedSection" style="display: none;">
+            <div class="card">
+                <div class="card-body">
+                    <div id="pinnedFileList">
+                        <div class="empty-state">
+                            <i class="bi bi-pin-angle"></i>
+                            <h6>暂无置顶文件</h6>
+                            <p class="text-muted">点击文件卡片上的图钉图标可将常用资料置顶</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="fileDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailFileName">文件详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="fileDetailContent">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="downloadBtn" onclick="downloadCurrentFile()">
+                        <i class="bi bi-download me-1"></i>下载文件
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        let currentFolderId = 0;
+        let currentFolderPath = [{ id: 0, name: '根目录' }];
+        let currentStudentId = null;
+        let currentFileId = null;
+        let currentTab = 'browse';
+
+        window.onload = function() {
+            api.checkSession('student');
+            const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+            currentStudentId = userInfo.uid;
+            document.getElementById('userInfo').textContent = `${userInfo.username} (${userInfo.classname || '未分班'})`;
+            loadData();
+        };
+
+        function loadData() {
+            loadFolderTree();
+            loadFiles();
+            loadPinnedFiles();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tabBrowse').classList.toggle('active', tab === 'browse');
+            document.getElementById('tabPinned').classList.toggle('active', tab === 'pinned');
+            document.getElementById('browseSection').style.display = tab === 'browse' ? 'block' : 'none';
+            document.getElementById('pinnedSection').style.display = tab === 'pinned' ? 'block' : 'none';
+            if (tab === 'pinned') {
+                loadPinnedFiles();
+            }
+        }
+
+        function loadFolderTree() {
+            if (!currentStudentId) return;
+            fetch(`${api.baseUrl}/repository/folder/tree?studentId=${currentStudentId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderFolderTree(data.data, document.getElementById('folderTree'), 0);
+                    }
+                });
+        }
+
+        function renderFolderTree(folders, container, level) {
+            if (!folders || folders.length === 0) {
+                if (level === 0) {
+                    container.innerHTML = `
+                        <div class="tree-item active" onclick="navigateToFolder(0)">
+                            <span class="tree-toggle"></span>
+                            <i class="bi bi-hdd-stack folder-icon"></i>根目录
+                        </div>
+                        <div class="empty-state small mt-3">
+                            <i class="bi bi-folder-x"></i>
+                            <div>暂无可用目录</div>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            let html = level === 0 ? `<div class="tree-item ${currentFolderId === 0 ? 'active' : ''}" onclick="navigateToFolder(0)">
+                <span class="tree-toggle"></span>
+                <i class="bi bi-hdd-stack folder-icon"></i>根目录
+            </div>` : '';
+
+            for (let folder of folders) {
+                html += `
+                    <div style="padding-left: ${level * 16}px">
+                        <div class="tree-item ${currentFolderId === folder.id ? 'active' : ''}" 
+                             onclick="navigateToFolder(${folder.id})">
+                            <span class="tree-toggle" onclick="event.stopPropagation(); toggleFolder(this, ${folder.id})">
+                                <i class="bi bi-chevron-right"></i>
+                            </span>
+                            <i class="bi bi-folder-fill folder-icon"></i>${folder.name}
+                        </div>
+                        <div id="children_${folder.id}" style="display: none;"></div>
+                    </div>
+                `;
+            }
+
+            if (level === 0) {
+                container.innerHTML = html;
+            }
+
+            for (let folder of folders) {
+                if (folder.children && folder.children.length > 0) {
+                    const childContainer = document.getElementById('children_' + folder.id);
+                    if (childContainer) {
+                        renderFolderTree(folder.children, childContainer, level + 1);
+                    }
+                }
+            }
+        }
+
+        function toggleFolder(element, folderId) {
+            const childrenDiv = document.getElementById('children_' + folderId);
+            const icon = element.querySelector('i');
+            if (childrenDiv.style.display === 'none') {
+                childrenDiv.style.display = 'block';
+                icon.className = 'bi bi-chevron-down';
+            } else {
+                childrenDiv.style.display = 'none';
+                icon.className = 'bi bi-chevron-right';
+            }
+        }
+
+        function navigateToFolder(folderId) {
+            currentFolderId = folderId;
+            if (folderId === 0) {
+                currentFolderPath = [{ id: 0, name: '根目录' }];
+            } else {
+                updateBreadcrumb(folderId);
+            }
+            renderBreadcrumb();
+            loadFolderTree();
+            loadFiles();
+        }
+
+        function updateBreadcrumb(folderId) {
+            fetch(`${api.baseUrl}/repository/folder/tree?studentId=${currentStudentId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const path = findFolderPath(data.data, folderId);
+                    if (path) {
+                        currentFolderPath = [{ id: 0, name: '根目录' }, ...path];
+                        renderBreadcrumb();
+                    }
+                });
+        }
+
+        function findFolderPath(folders, targetId, path = []) {
+            for (let folder of folders) {
+                if (folder.id === targetId) {
+                    return [...path, { id: folder.id, name: folder.name }];
+                }
+                if (folder.children) {
+                    const result = findFolderPath(folder.children, targetId, [...path, { id: folder.id, name: folder.name }]);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+
+        function renderBreadcrumb() {
+            const container = document.getElementById('breadcrumb');
+            container.innerHTML = currentFolderPath.map((item, index) => {
+                if (index === currentFolderPath.length - 1) {
+                    return `<li class="breadcrumb-item active">${item.name}</li>`;
+                }
+                return `<li class="breadcrumb-item"><a href="#" onclick="navigateToFolder(${item.id}); return false;">${item.name}</a></li>`;
+            }).join('');
+        }
+
+        function loadFiles() {
+            if (!currentStudentId) return;
+            const keyword = document.getElementById('searchKeyword').value;
+            const fileType = document.getElementById('typeFilter').value;
+            let url = `${api.baseUrl}/repository/file/list?folderId=${currentFolderId}&studentId=${currentStudentId}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            if (fileType && fileType !== 'all') url += `&fileType=${fileType}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderFileList(data.data, 'fileList');
+                    }
+                });
+        }
+
+        function renderFileList(files, containerId) {
+            const container = document.getElementById(containerId);
+            if (!files || files.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h6>此目录暂无文件</h6>
+                        <p class="text-muted">您没有权限查看此目录下的文件，或目录为空</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="row g-3">';
+            for (let file of files) {
+                const iconClass = getFileIconClass(file.fileType);
+                const isPinned = file.pinned;
+
+                html += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card file-card p-3 ${isPinned ? 'pinned' : ''}" 
+                             onclick="showFileDetail(${file.id})">
+                            <div class="d-flex align-items-start">
+                                <i class="${iconClass} fs-2 me-3 flex-shrink-0"></i>
+                                <div class="flex-grow-1 min-w-0 me-2">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <div class="fw-bold text-truncate flex-grow-1" title="${file.name}">${file.name}</div>
+                                        ${isPinned ? '<span class="pinned-badge ms-2"><i class="bi bi-pin-angle-fill"></i></span>' : ''}
+                                    </div>
+                                    <div class="small text-muted mb-1">${file.fileSizeDisplay} · ${file.downloadCount || 0} 次下载</div>
+                                    <div class="small text-muted">
+                                        <i class="bi bi-person me-1"></i>${file.uploaderName || '未知'}
+                                        <span class="mx-2">·</span>
+                                        <i class="bi bi-clock me-1"></i>${file.createTime ? file.createTime.substring(0, 10) : ''}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm pin-btn ${isPinned ? 'text-warning' : 'text-muted'}" 
+                                        onclick="event.stopPropagation(); togglePin(${file.id})"
+                                        title="${isPinned ? '取消置顶' : '置顶'}">
+                                    <i class="bi ${isPinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'} fs-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function getFileIconClass(type) {
+            const iconMap = {
+                pdf: 'bi bi-filetype-pdf file-type-pdf',
+                doc: 'bi bi-file-earmark-text file-type-doc',
+                zip: 'bi bi-file-earmark-zip file-type-zip',
+                image: 'bi bi-file-earmark-image file-type-image',
+                video: 'bi bi-file-earmark-play file-type-video',
+                audio: 'bi bi-file-earmark-music file-type-audio'
+            };
+            return iconMap[type] || 'bi bi-file-earmark file-type-other';
+        }
+
+        function searchFiles() {
+            if (currentTab === 'browse') {
+                loadFiles();
+            } else {
+                loadPinnedFiles();
+            }
+        }
+
+        function showFileDetail(fileId) {
+            currentFileId = fileId;
+            let url = `${api.baseUrl}/repository/file/list?folderId=0&studentId=${currentStudentId}`;
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    let allFiles = [];
+                    const collectFiles = (folderId) => {
+                        return fetch(`${api.baseUrl}/repository/file/list?folderId=${folderId}&studentId=${currentStudentId}`)
+                            .then(r => r.json())
+                            .then(d => {
+                                if (d.success && d.data) {
+                                    allFiles = allFiles.concat(d.data);
+                                }
+                                return Promise.resolve();
+                            });
+                    };
+
+                    const fetchAllFiles = () => {
+                        return fetch(`${api.baseUrl}/repository/folder/tree?studentId=${currentStudentId}`)
+                            .then(r => r.json())
+                            .then(treeData => {
+                                const folderIds = [];
+                                const collectIds = (folders) => {
+                                    for (let f of folders) {
+                                        folderIds.push(f.id);
+                                        if (f.children) collectIds(f.children);
+                                    }
+                                };
+                                if (treeData.success) collectIds(treeData.data);
+                                
+                                const promises = [collectFiles(0)];
+                                for (let id of folderIds) {
+                                    promises.push(collectFiles(id));
+                                }
+                                return Promise.all(promises);
+                            });
+                    };
+
+                    fetchAllFiles().then(() => {
+                        const file = allFiles.find(f => f.id === fileId);
+                        if (file) {
+                            renderFileDetail(file);
+                            new bootstrap.Modal(document.getElementById('fileDetailModal')).show();
+                        }
+                    });
+                });
+        }
+
+        function renderFileDetail(file) {
+            document.getElementById('detailFileName').textContent = file.name;
+            
+            const iconClass = getFileIconClass(file.fileType);
+            const visibilityText = {
+                'ALL': '全体学生可见',
+                'CLASSES': '指定班级可见',
+                'INHERIT': '继承目录权限'
+            };
+
+            document.getElementById('fileDetailContent').innerHTML = `
+                <div class="text-center mb-4">
+                    <i class="${iconClass} fs-1"></i>
+                </div>
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" style="width: 100px;">文件名称</td>
+                        <td class="fw-bold">${file.name}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">原始文件名</td>
+                        <td>${file.originalName || '-'}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">文件类型</td>
+                        <td>${file.fileType ? file.fileType.toUpperCase() : '未知'}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">文件大小</td>
+                        <td>${file.fileSizeDisplay}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">上传者</td>
+                        <td>${file.uploaderName || '未知'}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">上传时间</td>
+                        <td>${file.createTime || '-'}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">可见范围</td>
+                        <td>${visibilityText[file.visibilityType] || '-'}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">下载次数</td>
+                        <td>${file.downloadCount || 0} 次</td>
+                    </tr>
+                </table>
+            `;
+        }
+
+        function downloadCurrentFile() {
+            if (currentFileId) {
+                downloadFile(currentFileId);
+            }
+        }
+
+        function downloadFile(fileId) {
+            window.open(api.baseUrl + '/repository/file/download/' + fileId, '_blank');
+        }
+
+        function togglePin(fileId) {
+            if (!currentStudentId) return;
+
+            fetch(`${api.baseUrl}/repository/file/pin/${fileId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId: currentStudentId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.pinned) {
+                        alert('已置顶');
+                    } else {
+                        alert('已取消置顶');
+                    }
+                    loadData();
+                } else {
+                    alert(data.message || '操作失败');
+                }
+            });
+        }
+
+        function loadPinnedFiles() {
+            if (!currentStudentId) return;
+            fetch(`${api.baseUrl}/repository/file/pinned?studentId=${currentStudentId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const count = data.data ? data.data.length : 0;
+                        const countBadge = document.getElementById('pinnedCount');
+                        if (count > 0) {
+                            countBadge.textContent = count;
+                            countBadge.style.display = 'inline-block';
+                        } else {
+                            countBadge.style.display = 'none';
+                        }
+                        renderPinnedList(data.data);
+                    }
+                });
+        }
+
+        function renderPinnedList(files) {
+            const container = document.getElementById('pinnedFileList');
+            if (!files || files.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-pin-angle"></i>
+                        <h6>暂无置顶文件</h6>
+                        <p class="text-muted">点击文件卡片上的图钉图标可将常用资料置顶</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="row g-3">';
+            for (let file of files) {
+                const iconClass = getFileIconClass(file.fileType);
+                html += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card file-card pinned p-3" onclick="showFileDetail(${file.id})">
+                            <div class="d-flex align-items-start">
+                                <i class="${iconClass} fs-2 me-3 flex-shrink-0"></i>
+                                <div class="flex-grow-1 min-w-0 me-2">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <div class="fw-bold text-truncate flex-grow-1" title="${file.name}">${file.name}</div>
+                                        <span class="pinned-badge ms-2"><i class="bi bi-pin-angle-fill"></i></span>
+                                    </div>
+                                    <div class="small text-muted mb-1">${file.fileSizeDisplay} · ${file.downloadCount || 0} 次下载</div>
+                                    <div class="small text-muted">
+                                        <i class="bi bi-person me-1"></i>${file.uploaderName || '未知'}
+                                        <span class="mx-2">·</span>
+                                        <i class="bi bi-clock me-1"></i>${file.createTime ? file.createTime.substring(0, 10) : ''}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm pin-btn text-warning" 
+                                        onclick="event.stopPropagation(); togglePin(${file.id})"
+                                        title="取消置顶">
+                                    <i class="bi bi-pin-angle-fill fs-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

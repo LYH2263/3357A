@@ -6,8 +6,9 @@ spring:
     name: school-system
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 100MB
+      max-request-size: 100MB
+      location: /app/uploads/
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/school_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${SPRING_DATASOURCE_USERNAME:root}

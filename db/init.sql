@@ -581,3 +581,115 @@ INSERT INTO `calendar_event_class` (`event_id`, `class_id`) VALUES
 (12, 1), (12, 2), (12, 3),
 (13, 1), (13, 2), (13, 3),
 (14, 1), (14, 2);
+
+-- (20) 资料库目录表
+CREATE TABLE `repository_folder` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(200) NOT NULL COMMENT '目录名称',
+    `parent_id` INT DEFAULT 0 COMMENT '父目录ID，0表示根目录',
+    `path` VARCHAR(500) DEFAULT '/' COMMENT '目录路径，如/课程资料/Java/',
+    `depth` INT DEFAULT 1 COMMENT '目录深度，根目录为1',
+    `visibility_type` VARCHAR(20) DEFAULT 'ALL' COMMENT '可见范围：ALL-全体学生，CLASSES-指定班级',
+    `creator_id` INT COMMENT '创建人ID(教师)',
+    `creator_name` VARCHAR(50) COMMENT '创建人姓名(冗余)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_parent` (`parent_id`),
+    KEY `idx_path` (`path`(255)),
+    KEY `idx_visibility` (`visibility_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资料库目录表';
+
+-- (21) 资料库目录-班级关联表
+CREATE TABLE `repository_folder_class` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `folder_id` INT NOT NULL COMMENT '目录ID',
+    `class_id` INT NOT NULL COMMENT '班级ID',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_folder_class` (`folder_id`, `class_id`),
+    KEY `idx_folder` (`folder_id`),
+    KEY `idx_class` (`class_id`),
+    FOREIGN KEY (`folder_id`) REFERENCES `repository_folder`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资料库目录班级关联表';
+
+-- (22) 资料库文件表
+CREATE TABLE `repository_file` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL COMMENT '文件显示名称',
+    `original_name` VARCHAR(255) COMMENT '原始文件名',
+    `file_type` VARCHAR(50) COMMENT '文件类型：pdf,doc,zip,video,audio,image,other',
+    `file_size` BIGINT DEFAULT 0 COMMENT '文件大小(字节)',
+    `file_path` VARCHAR(500) NOT NULL COMMENT '文件存储路径',
+    `folder_id` INT DEFAULT 0 COMMENT '所属目录ID，0表示根目录',
+    `visibility_type` VARCHAR(20) DEFAULT 'INHERIT' COMMENT '可见范围：INHERIT-继承目录，ALL-全体学生，CLASSES-指定班级',
+    `uploader_id` INT COMMENT '上传人ID(教师)',
+    `uploader_name` VARCHAR(50) COMMENT '上传人姓名(冗余)',
+    `download_count` INT DEFAULT 0 COMMENT '下载次数',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_folder` (`folder_id`),
+    KEY `idx_type` (`file_type`),
+    KEY `idx_visibility` (`visibility_type`),
+    KEY `idx_name` (`name`(100)),
+    FOREIGN KEY (`folder_id`) REFERENCES `repository_folder`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资料库文件表';
+
+-- (23) 资料库文件-班级关联表
+CREATE TABLE `repository_file_class` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `file_id` INT NOT NULL COMMENT '文件ID',
+    `class_id` INT NOT NULL COMMENT '班级ID',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_file_class` (`file_id`, `class_id`),
+    KEY `idx_file` (`file_id`),
+    KEY `idx_class` (`class_id`),
+    FOREIGN KEY (`file_id`) REFERENCES `repository_file`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资料库文件班级关联表';
+
+-- (24) 资料库文件置顶表
+CREATE TABLE `repository_file_pin` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `file_id` INT NOT NULL COMMENT '文件ID',
+    `student_id` INT NOT NULL COMMENT '学生ID',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_file_student` (`file_id`, `student_id`),
+    KEY `idx_student` (`student_id`),
+    FOREIGN KEY (`file_id`) REFERENCES `repository_file`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`uid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资料库文件置顶表';
+
+-- Seeding repository data
+INSERT INTO `repository_folder` (`name`, `parent_id`, `path`, `depth`, `visibility_type`, `creator_id`, `creator_name`) VALUES 
+('课程资料', 0, '/课程资料/', 1, 'ALL', 1, '张老师'),
+('实验资料', 0, '/实验资料/', 1, 'ALL', 1, '张老师'),
+('参考书籍', 0, '/参考书籍/', 1, 'CLASSES', 1, '张老师'),
+('Java课程', 1, '/课程资料/Java课程/', 2, 'ALL', 1, '张老师'),
+('数据库课程', 1, '/课程资料/数据库课程/', 2, 'ALL', 2, '李老师'),
+('网络课程', 1, '/课程资料/网络课程/', 2, 'CLASSES', 3, '王老师'),
+('Java实验', 2, '/实验资料/Java实验/', 2, 'ALL', 1, '张老师'),
+('数据库实验', 2, '/实验资料/数据库实验/', 2, 'ALL', 2, '李老师');
+
+INSERT INTO `repository_folder_class` (`folder_id`, `class_id`) VALUES 
+(3, 1), (3, 2), (3, 3),
+(6, 5), (6, 9);
+
+INSERT INTO `repository_file` (`name`, `original_name`, `file_type`, `file_size`, `file_path`, `folder_id`, `visibility_type`, `uploader_id`, `uploader_name`) VALUES 
+('Java第一章讲义.pdf', 'chapter1.pdf', 'pdf', 1024000, '/uploads/chapter1.pdf', 4, 'INHERIT', 1, '张老师'),
+('Java第二章讲义.pdf', 'chapter2.pdf', 'pdf', 1124000, '/uploads/chapter2.pdf', 4, 'INHERIT', 1, '张老师'),
+('Java第三章讲义.pdf', 'chapter3.pdf', 'pdf', 986000, '/uploads/chapter3.pdf', 4, 'INHERIT', 1, '张老师'),
+('数据库第一章讲义.pdf', 'db1.pdf', 'pdf', 876000, '/uploads/db1.pdf', 5, 'INHERIT', 2, '李老师'),
+('数据库第二章讲义.pdf', 'db2.pdf', 'pdf', 923000, '/uploads/db2.pdf', 5, 'INHERIT', 2, '李老师'),
+('Java实验1指导书.zip', 'exp1.zip', 'zip', 5120000, '/uploads/exp1.zip', 7, 'INHERIT', 1, '张老师'),
+('Java实验2指导书.zip', 'exp2.zip', 'zip', 4890000, '/uploads/exp2.zip', 7, 'INHERIT', 1, '张老师'),
+('数据库实验1指导书.zip', 'dbexp1.zip', 'zip', 3450000, '/uploads/dbexp1.zip', 8, 'INHERIT', 2, '李老师'),
+('网络协议分析教程.pdf', 'net1.pdf', 'pdf', 2340000, '/uploads/net1.pdf', 6, 'CLASSES', 3, '王老师'),
+('Java核心技术卷I.pdf', 'java_core.pdf', 'pdf', 15670000, '/uploads/java_core.pdf', 3, 'CLASSES', 1, '张老师');
+
+INSERT INTO `repository_file_class` (`file_id`, `class_id`) VALUES 
+(9, 5), (9, 9),
+(10, 1), (10, 2), (10, 3);
+
+INSERT INTO `repository_file_pin` (`file_id`, `student_id`) VALUES 
+(1, 1), (2, 1), (6, 1),
+(1, 2), (4, 2);

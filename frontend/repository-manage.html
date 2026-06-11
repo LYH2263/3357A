@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教学资料库管理 - SchoolSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar { width: 260px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; background: #f8f9fa; }
+        .main-content { margin-left: 260px; padding: 1.5rem; }
+        .nav-link { border-radius: 0.5rem; margin: 0.2rem 0; padding: 0.8rem 1rem; color: #333; }
+        .nav-link:hover, .nav-link.active { background: #e7f1ff; color: #0d6efd; }
+        .folder-tree { max-height: calc(100vh - 200px); overflow-y: auto; }
+        .tree-item { cursor: pointer; user-select: none; padding: 6px 8px; border-radius: 4px; }
+        .tree-item:hover { background: #f0f4ff; }
+        .tree-item.active { background: #e7f1ff; color: #0d6efd; }
+        .tree-toggle { display: inline-block; width: 16px; margin-right: 4px; }
+        .folder-icon { color: #ffc107; margin-right: 6px; }
+        .file-icon { margin-right: 6px; }
+        .file-card { transition: all 0.2s; cursor: pointer; }
+        .file-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .file-card.selected { border-color: #0d6efd; background: #f0f7ff; }
+        .breadcrumb-item a { text-decoration: none; }
+        .toolbar { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .context-menu { position: fixed; z-index: 1050; min-width: 160px; background: #fff; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); display: none; }
+        .context-menu .dropdown-item { cursor: pointer; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-state i { font-size: 48px; margin-bottom: 16px; color: #dee2e6; }
+        .badge-visibility { font-size: 0.7rem; margin-left: 6px; }
+        .drag-over { border: 2px dashed #0d6efd !important; background: #f0f7ff !important; }
+        .upload-dropzone { border: 2px dashed #dee2e6; border-radius: 8px; padding: 40px; text-align: center; transition: all 0.2s; }
+        .upload-dropzone.dragover { border-color: #0d6efd; background: #f0f7ff; }
+        .file-type-pdf { color: #dc3545; }
+        .file-type-doc { color: #0d6efd; }
+        .file-type-zip { color: #fd7e14; }
+        .file-type-image { color: #198754; }
+        .file-type-video { color: #6f42c1; }
+        .file-type-audio { color: #0dcaf0; }
+        .file-type-other { color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="teacher.html" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="evaluation-manage.html" class="nav-link"><i class="bi bi-star-half"></i>教师评教</a></li>
+            <li><a href="calendar-manage.html" class="nav-link"><i class="bi bi-calendar3"></i>教学日历</a></li>
+            <li><a href="repository-manage.html" class="nav-link active"><i class="bi bi-folder-symlink"></i>教学资料库</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold"><i class="bi bi-folder-symlink text-primary me-2"></i>教学资料库管理</h4>
+            <div>
+                <button class="btn btn-outline-primary me-2" onclick="loadFolderTree()"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong>目录树</strong>
+                        <button class="btn btn-sm btn-primary" onclick="showCreateFolderModal(0)"><i class="bi bi-folder-plus"></i></button>
+                    </div>
+                    <div class="card-body p-2 folder-tree" id="folderTree">
+                        <div class="text-center py-3 text-muted small">加载中...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-9">
+                <div class="toolbar d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0" id="breadcrumb">
+                                <li class="breadcrumb-item active" onclick="navigateToFolder(0)">根目录</li>
+                            </ol>
+                        </nav>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <div class="input-group" style="width: 200px;">
+                            <input type="text" id="searchKeyword" class="form-control form-control-sm" placeholder="搜索文件...">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="searchFiles()"><i class="bi bi-search"></i></button>
+                        </div>
+                        <select class="form-select form-select-sm" id="typeFilter" style="width: 120px;" onchange="searchFiles()">
+                            <option value="all">全部类型</option>
+                            <option value="pdf">PDF</option>
+                            <option value="doc">文档</option>
+                            <option value="zip">压缩包</option>
+                            <option value="image">图片</option>
+                            <option value="video">视频</option>
+                            <option value="audio">音频</option>
+                            <option value="other">其他</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="showUploadModal()"><i class="bi bi-cloud-upload me-1"></i>上传文件</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body min-vh-50" id="fileList">
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-folder-open fs-1 d-block mb-3"></i>
+                            请选择一个目录查看文件
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="context-menu" id="contextMenu">
+        <div class="dropdown-item" onclick="createSubFolder()"><i class="bi bi-folder-plus me-2"></i>新建子文件夹</div>
+        <div class="dropdown-item" onclick="renameItem()"><i class="bi bi-pencil me-2"></i>重命名</div>
+        <div class="dropdown-item" onclick="moveItem()"><i class="bi bi-arrow-left-right me-2"></i>移动到...</div>
+        <div class="dropdown-item" onclick="setVisibility()"><i class="bi bi-eye me-2"></i>设置可见范围</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item text-danger" onclick="deleteItem()"><i class="bi bi-trash me-2"></i>删除</div>
+    </div>
+
+    <div class="modal fade" id="createFolderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新建文件夹</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">文件夹名称</label>
+                        <input type="text" class="form-control" id="folderName" placeholder="请输入文件夹名称">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">可见范围</label>
+                        <select class="form-select" id="folderVisibility" onchange="toggleClassSelect('folder')">
+                            <option value="ALL">全体学生可见</option>
+                            <option value="CLASSES">指定班级可见</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="folderClassContainer" style="display: none;">
+                        <label class="form-label">选择班级</label>
+                        <div id="folderClassList" style="max-height: 150px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="createFolder()">创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">上传文件</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="upload-dropzone" id="dropzone">
+                            <i class="bi bi-cloud-upload fs-1 text-muted mb-3 d-block"></i>
+                            <p class="mb-2">拖拽文件到此处，或</p>
+                            <input type="file" id="fileInput" class="d-none" multiple onchange="handleFileSelect(this.files)">
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                            <p class="text-muted small mt-3 mb-0">支持 PDF、Word、Excel、PPT、图片、视频、音频、压缩包等格式，单个文件最大 100MB</p>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="selectedFiles" style="display: none;">
+                        <label class="form-label">已选择的文件</label>
+                        <div id="fileListPreview" class="list-group list-group-flush"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">可见范围</label>
+                        <select class="form-select" id="fileVisibility" onchange="toggleClassSelect('file')">
+                            <option value="INHERIT">继承目录权限</option>
+                            <option value="ALL">全体学生可见</option>
+                            <option value="CLASSES">指定班级可见</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="fileClassContainer" style="display: none;">
+                        <label class="form-label">选择班级</label>
+                        <div id="fileClassList" style="max-height: 150px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px;"></div>
+                    </div>
+                    <div class="progress" id="uploadProgress" style="display: none;">
+                        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="uploadBtn" onclick="uploadFiles()" disabled>上传</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="renameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">重命名</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">新名称</label>
+                        <input type="text" class="form-control" id="newName">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmRename()">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="moveModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">移动到...</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择目标目录</label>
+                        <div id="moveTree" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmMove()">确定移动</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="visibilityModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">设置可见范围</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">可见范围</label>
+                        <select class="form-select" id="visibilityType" onchange="toggleVisibilityClassSelect()">
+                            <option value="ALL">全体学生可见</option>
+                            <option value="CLASSES">指定班级可见</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="visibilityClassContainer" style="display: none;">
+                        <label class="form-label">选择班级</label>
+                        <div id="visibilityClassList" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmSetVisibility()">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="deleteMessage">确定要删除此项吗？此操作无法撤销。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        let currentFolderId = 0;
+        let currentFolderPath = [{ id: 0, name: '根目录' }];
+        let contextMenuItem = null;
+        let contextMenuType = null;
+        let selectedFiles = [];
+        let allClasses = [];
+        let moveTargetId = 0;
+
+        window.onload = function() {
+            api.checkSession('teacher');
+            loadClasses();
+            loadFolderTree();
+            setupDragAndDrop();
+            setupContextMenu();
+        };
+
+        function loadClasses() {
+            fetch(api.baseUrl + '/classes/list')
+                .then(res => res.json())
+                .then(data => {
+                    allClasses = data;
+                    renderClassCheckboxes('folderClassList');
+                    renderClassCheckboxes('fileClassList');
+                    renderClassCheckboxes('visibilityClassList');
+                });
+        }
+
+        function renderClassCheckboxes(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = allClasses.map(c => `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${c.cid}" id="${containerId}_${c.cid}">
+                    <label class="form-check-label" for="${containerId}_${c.cid}">${c.cname}</label>
+                </div>
+            `).join('');
+        }
+
+        function loadFolderTree() {
+            fetch(api.baseUrl + '/repository/folder/tree')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderFolderTree(data.data, document.getElementById('folderTree'), 0);
+                    }
+                });
+        }
+
+        function renderFolderTree(folders, container, level) {
+            if (!folders || folders.length === 0) {
+                if (level === 0) {
+                    container.innerHTML = `
+                        <div class="tree-item active" onclick="navigateToFolder(0)">
+                            <span class="tree-toggle"></span>
+                            <i class="bi bi-hdd-stack folder-icon"></i>根目录
+                        </div>
+                        <div class="empty-state small">
+                            <i class="bi bi-folder"></i>
+                            <div>暂无目录</div>
+                            <div class="text-muted">点击右上角按钮创建</div>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            let html = level === 0 ? `<div class="tree-item ${currentFolderId === 0 ? 'active' : ''}" onclick="navigateToFolder(0)">
+                <span class="tree-toggle"></span>
+                <i class="bi bi-hdd-stack folder-icon"></i>根目录
+            </div>` : '';
+
+            for (let folder of folders) {
+                const visibilityBadge = folder.visibilityType === 'CLASSES' ? 
+                    '<span class="badge bg-secondary badge-visibility">指定班级</span>' : 
+                    '<span class="badge bg-success badge-visibility">全部</span>';
+                
+                html += `
+                    <div style="padding-left: ${level * 16}px">
+                        <div class="tree-item ${currentFolderId === folder.id ? 'active' : ''}" 
+                             onclick="navigateToFolder(${folder.id})"
+                             oncontextmenu="showContextMenu(event, ${folder.id}, 'folder')">
+                            <span class="tree-toggle" onclick="event.stopPropagation(); toggleFolder(this, ${folder.id})">
+                                <i class="bi bi-chevron-right"></i>
+                            </span>
+                            <i class="bi bi-folder-fill folder-icon"></i>${folder.name}${visibilityBadge}
+                        </div>
+                        <div id="children_${folder.id}" style="display: none;"></div>
+                    </div>
+                `;
+            }
+
+            if (level === 0) {
+                container.innerHTML = html;
+            }
+
+            for (let folder of folders) {
+                if (folder.children && folder.children.length > 0) {
+                    const childContainer = document.getElementById('children_' + folder.id);
+                    if (childContainer) {
+                        renderFolderTree(folder.children, childContainer, level + 1);
+                    }
+                }
+            }
+        }
+
+        function toggleFolder(element, folderId) {
+            const childrenDiv = document.getElementById('children_' + folderId);
+            const icon = element.querySelector('i');
+            if (childrenDiv.style.display === 'none') {
+                childrenDiv.style.display = 'block';
+                icon.className = 'bi bi-chevron-down';
+            } else {
+                childrenDiv.style.display = 'none';
+                icon.className = 'bi bi-chevron-right';
+            }
+        }
+
+        function navigateToFolder(folderId) {
+            currentFolderId = folderId;
+            if (folderId === 0) {
+                currentFolderPath = [{ id: 0, name: '根目录' }];
+            } else {
+                updateBreadcrumb(folderId);
+            }
+            renderBreadcrumb();
+            loadFolderTree();
+            loadFiles();
+        }
+
+        function updateBreadcrumb(folderId) {
+            fetch(api.baseUrl + '/repository/folder/tree')
+                .then(res => res.json())
+                .then(data => {
+                    const path = findFolderPath(data.data, folderId);
+                    if (path) {
+                        currentFolderPath = [{ id: 0, name: '根目录' }, ...path];
+                        renderBreadcrumb();
+                    }
+                });
+        }
+
+        function findFolderPath(folders, targetId, path = []) {
+            for (let folder of folders) {
+                if (folder.id === targetId) {
+                    return [...path, { id: folder.id, name: folder.name }];
+                }
+                if (folder.children) {
+                    const result = findFolderPath(folder.children, targetId, [...path, { id: folder.id, name: folder.name }]);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+
+        function renderBreadcrumb() {
+            const container = document.getElementById('breadcrumb');
+            container.innerHTML = currentFolderPath.map((item, index) => {
+                if (index === currentFolderPath.length - 1) {
+                    return `<li class="breadcrumb-item active">${item.name}</li>`;
+                }
+                return `<li class="breadcrumb-item"><a href="#" onclick="navigateToFolder(${item.id}); return false;">${item.name}</a></li>`;
+            }).join('');
+        }
+
+        function loadFiles() {
+            const keyword = document.getElementById('searchKeyword').value;
+            const fileType = document.getElementById('typeFilter').value;
+            let url = `${api.baseUrl}/repository/file/list?folderId=${currentFolderId}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            if (fileType && fileType !== 'all') url += `&fileType=${fileType}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        renderFileList(data.data);
+                    }
+                });
+        }
+
+        function renderFileList(files) {
+            const container = document.getElementById('fileList');
+            if (!files || files.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h6>此目录暂无文件</h6>
+                        <p class="text-muted">点击"上传文件"按钮添加资料</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="row g-3">';
+            for (let file of files) {
+                const iconClass = getFileIconClass(file.fileType);
+                const visibilityBadge = file.visibilityType === 'CLASSES' ? 
+                    '<span class="badge bg-secondary">指定班级</span>' : 
+                    file.visibilityType === 'ALL' ? 
+                    '<span class="badge bg-success">全部</span>' : 
+                    '<span class="badge bg-info">继承</span>';
+
+                html += `
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card file-card p-3" 
+                             oncontextmenu="showContextMenu(event, ${file.id}, 'file')">
+                            <div class="d-flex align-items-start mb-2">
+                                <i class="${iconClass} fs-2 me-2"></i>
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="fw-bold text-truncate" title="${file.name}">${file.name}</div>
+                                    <div class="small text-muted">${file.fileSizeDisplay}</div>
+                                </div>
+                            </div>
+                            <div class="small text-muted mb-2">
+                                <div><i class="bi bi-cloud-arrow-down me-1"></i>${file.downloadCount || 0} 次下载</div>
+                                <div><i class="bi bi-person me-1"></i>${file.uploaderName || '未知'}</div>
+                                <div><i class="bi bi-clock me-1"></i>${file.createTime || ''}</div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                ${visibilityBadge}
+                                <button class="btn btn-sm btn-outline-primary" onclick="downloadFile(${file.id})">
+                                    <i class="bi bi-download"></i> 下载
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function getFileIconClass(type) {
+            const iconMap = {
+                pdf: 'bi bi-filetype-pdf file-type-pdf',
+                doc: 'bi bi-file-earmark-text file-type-doc',
+                zip: 'bi bi-file-earmark-zip file-type-zip',
+                image: 'bi bi-file-earmark-image file-type-image',
+                video: 'bi bi-file-earmark-play file-type-video',
+                audio: 'bi bi-file-earmark-music file-type-audio'
+            };
+            return iconMap[type] || 'bi bi-file-earmark file-type-other';
+        }
+
+        function searchFiles() {
+            loadFiles();
+        }
+
+        function showCreateFolderModal(parentId) {
+            document.getElementById('folderName').value = '';
+            document.getElementById('folderVisibility').value = 'ALL';
+            document.getElementById('folderClassContainer').style.display = 'none';
+            document.getElementById('createFolderModal').dataset.parentId = parentId || currentFolderId;
+            uncheckAllClasses('folderClassList');
+            new bootstrap.Modal(document.getElementById('createFolderModal')).show();
+        }
+
+        function toggleClassSelect(type) {
+            const visibility = document.getElementById(type + 'Visibility').value;
+            const container = document.getElementById(type + 'ClassContainer');
+            container.style.display = visibility === 'CLASSES' ? 'block' : 'none';
+        }
+
+        function uncheckAllClasses(containerId) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+        }
+
+        function getSelectedClasses(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return [];
+            return Array.from(container.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(cb => parseInt(cb.value));
+        }
+
+        function createFolder() {
+            const name = document.getElementById('folderName').value.trim();
+            if (!name) {
+                alert('请输入文件夹名称');
+                return;
+            }
+            const parentId = parseInt(document.getElementById('createFolderModal').dataset.parentId);
+            const visibilityType = document.getElementById('folderVisibility').value;
+            const classIds = getSelectedClasses('folderClassList');
+
+            const teacherInfo = JSON.parse(sessionStorage.getItem('teacherInfo') || '{}');
+
+            fetch(api.baseUrl + '/repository/folder/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    parentId,
+                    visibilityType,
+                    classIds,
+                    creatorId: teacherInfo.tid,
+                    creatorName: teacherInfo.tname
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('createFolderModal')).hide();
+                    loadFolderTree();
+                    if (parentId === currentFolderId) {
+                        loadFiles();
+                    }
+                } else {
+                    alert(data.message || '创建失败');
+                }
+            });
+        }
+
+        function showUploadModal() {
+            selectedFiles = [];
+            document.getElementById('fileListPreview').innerHTML = '';
+            document.getElementById('selectedFiles').style.display = 'none';
+            document.getElementById('uploadBtn').disabled = true;
+            document.getElementById('fileVisibility').value = 'INHERIT';
+            document.getElementById('fileClassContainer').style.display = 'none';
+            document.getElementById('uploadProgress').style.display = 'none';
+            uncheckAllClasses('fileClassList');
+            new bootstrap.Modal(document.getElementById('uploadModal')).show();
+        }
+
+        function setupDragAndDrop() {
+            const dropzone = document.getElementById('dropzone');
+            if (!dropzone) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, () => {
+                    dropzone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, () => {
+                    dropzone.classList.remove('dragover');
+                }, false);
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                handleFileSelect(e.dataTransfer.files);
+            }, false);
+        }
+
+        function handleFileSelect(files) {
+            for (let file of files) {
+                if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                    selectedFiles.push(file);
+                }
+            }
+            updateFilePreview();
+        }
+
+        function updateFilePreview() {
+            const container = document.getElementById('fileListPreview');
+            const filesDiv = document.getElementById('selectedFiles');
+            
+            if (selectedFiles.length === 0) {
+                filesDiv.style.display = 'none';
+                document.getElementById('uploadBtn').disabled = true;
+                return;
+            }
+
+            filesDiv.style.display = 'block';
+            document.getElementById('uploadBtn').disabled = false;
+
+            container.innerHTML = selectedFiles.map((file, index) => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="${getFileIconClassByExt(file.name)} me-2"></i>
+                        <div>
+                            <div>${file.name}</div>
+                            <small class="text-muted">${formatFileSize(file.size)}</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile(${index})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function getFileIconClassByExt(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (ext === 'pdf') return 'bi bi-filetype-pdf file-type-pdf';
+            if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md'].includes(ext)) return 'bi bi-file-earmark-text file-type-doc';
+            if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'bi bi-file-earmark-zip file-type-zip';
+            if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'bi bi-file-earmark-image file-type-image';
+            if (['mp4', 'avi', 'mov', 'wmv', 'flv'].includes(ext)) return 'bi bi-file-earmark-play file-type-video';
+            if (['mp3', 'wav', 'flac'].includes(ext)) return 'bi bi-file-earmark-music file-type-audio';
+            return 'bi bi-file-earmark file-type-other';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFilePreview();
+        }
+
+        function uploadFiles() {
+            const visibilityType = document.getElementById('fileVisibility').value;
+            const classIds = getSelectedClasses('fileClassList');
+            const teacherInfo = JSON.parse(sessionStorage.getItem('teacherInfo') || '{}');
+            
+            const progressBar = document.getElementById('progressBar');
+            const progressDiv = document.getElementById('uploadProgress');
+            progressDiv.style.display = 'block';
+            
+            let completed = 0;
+            let failed = 0;
+
+            const uploadNext = (index) => {
+                if (index >= selectedFiles.length) {
+                    progressDiv.style.display = 'none';
+                    bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+                    loadFiles();
+                    if (failed > 0) {
+                        alert(`${completed} 个文件上传成功，${failed} 个失败`);
+                    } else {
+                        alert('全部上传成功');
+                    }
+                    return;
+                }
+
+                const file = selectedFiles[index];
+                progressBar.style.width = ((index / selectedFiles.length) * 100) + '%';
+                progressBar.textContent = `${index + 1}/${selectedFiles.length}`;
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folderId', currentFolderId);
+                formData.append('visibilityType', visibilityType);
+                formData.append('classIds', classIds.join(','));
+                formData.append('uploaderId', teacherInfo.tid);
+                formData.append('uploaderName', teacherInfo.tname);
+
+                fetch(api.baseUrl + '/repository/file/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        completed++;
+                    } else {
+                        failed++;
+                        console.error('上传失败:', data.message);
+                    }
+                    uploadNext(index + 1);
+                })
+                .catch(() => {
+                    failed++;
+                    uploadNext(index + 1);
+                });
+            };
+
+            uploadNext(0);
+        }
+
+        function downloadFile(fileId) {
+            window.open(api.baseUrl + '/repository/file/download/' + fileId, '_blank');
+        }
+
+        function setupContextMenu() {
+            const menu = document.getElementById('contextMenu');
+            
+            document.addEventListener('contextmenu', (e) => {
+                if (!e.target.closest('.tree-item') && !e.target.closest('.file-card')) {
+                    menu.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', () => {
+                menu.style.display = 'none';
+            });
+        }
+
+        function showContextMenu(event, itemId, itemType) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            contextMenuItem = itemId;
+            contextMenuType = itemType;
+            
+            const menu = document.getElementById('contextMenu');
+            menu.style.left = event.clientX + 'px';
+            menu.style.top = event.clientY + 'px';
+            menu.style.display = 'block';
+        }
+
+        function createSubFolder() {
+            if (contextMenuType === 'folder') {
+                showCreateFolderModal(contextMenuItem);
+            } else {
+                showCreateFolderModal(currentFolderId);
+            }
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+
+        function renameItem() {
+            document.getElementById('newName').value = '';
+            new bootstrap.Modal(document.getElementById('renameModal')).show();
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+
+        function confirmRename() {
+            const newName = document.getElementById('newName').value.trim();
+            if (!newName) {
+                alert('请输入新名称');
+                return;
+            }
+
+            const url = contextMenuType === 'folder' ? 
+                `${api.baseUrl}/repository/folder/rename` : 
+                `${api.baseUrl}/repository/file/rename`;
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: contextMenuItem,
+                    name: newName
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('renameModal')).hide();
+                    loadFolderTree();
+                    loadFiles();
+                } else {
+                    alert(data.message || '重命名失败');
+                }
+            });
+        }
+
+        function moveItem() {
+            loadMoveTree();
+            new bootstrap.Modal(document.getElementById('moveModal')).show();
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+
+        function loadMoveTree() {
+            fetch(api.baseUrl + '/repository/folder/tree')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        moveTargetId = 0;
+                        renderMoveTree([{ id: 0, name: '根目录', children: data.data }], document.getElementById('moveTree'), 0);
+                    }
+                });
+        }
+
+        function renderMoveTree(folders, container, level) {
+            let html = '';
+            for (let folder of folders) {
+                if (contextMenuType === 'folder' && folder.id === contextMenuItem) continue;
+                
+                html += `
+                    <div style="padding-left: ${level * 16}px">
+                        <div class="tree-item ${moveTargetId === folder.id ? 'active' : ''}" 
+                             onclick="selectMoveTarget(${folder.id}, this)">
+                            <i class="bi ${folder.id === 0 ? 'bi-hdd-stack' : 'bi-folder-fill'} folder-icon me-2"></i>
+                            ${folder.name}
+                        </div>
+                        <div id="moveChildren_${folder.id}">
+                            ${folder.children ? renderMoveTreeHtml(folder.children, level + 1) : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function renderMoveTreeHtml(folders, level) {
+            if (!folders || folders.length === 0) return '';
+            let html = '';
+            for (let folder of folders) {
+                if (contextMenuType === 'folder' && folder.id === contextMenuItem) continue;
+                html += `
+                    <div style="padding-left: ${level * 16}px">
+                        <div class="tree-item ${moveTargetId === folder.id ? 'active' : ''}" 
+                             onclick="selectMoveTarget(${folder.id}, this)">
+                            <i class="bi bi-folder-fill folder-icon me-2"></i>
+                            ${folder.name}
+                        </div>
+                        ${folder.children ? renderMoveTreeHtml(folder.children, level + 1) : ''}
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        function selectMoveTarget(id, element) {
+            moveTargetId = id;
+            document.querySelectorAll('#moveTree .tree-item').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function confirmMove() {
+            const url = contextMenuType === 'folder' ? 
+                `${api.baseUrl}/repository/folder/move` : 
+                `${api.baseUrl}/repository/file/move`;
+            
+            const body = contextMenuType === 'folder' ?
+                { sourceId: contextMenuItem, targetParentId: moveTargetId } :
+                { fileId: contextMenuItem, targetFolderId: moveTargetId };
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('moveModal')).hide();
+                    loadFolderTree();
+                    loadFiles();
+                } else {
+                    alert(data.message || '移动失败');
+                }
+            });
+        }
+
+        function setVisibility() {
+            const select = document.getElementById('visibilityType');
+            if (contextMenuType === 'file') {
+                select.innerHTML = `
+                    <option value="INHERIT">继承目录权限</option>
+                    <option value="ALL">全体学生可见</option>
+                    <option value="CLASSES">指定班级可见</option>
+                `;
+            } else {
+                select.innerHTML = `
+                    <option value="ALL">全体学生可见</option>
+                    <option value="CLASSES">指定班级可见</option>
+                `;
+            }
+            document.getElementById('visibilityClassContainer').style.display = 'none';
+            uncheckAllClasses('visibilityClassList');
+            new bootstrap.Modal(document.getElementById('visibilityModal')).show();
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+
+        function toggleVisibilityClassSelect() {
+            const type = document.getElementById('visibilityType').value;
+            document.getElementById('visibilityClassContainer').style.display = 
+                type === 'CLASSES' ? 'block' : 'none';
+        }
+
+        function confirmSetVisibility() {
+            const visibilityType = document.getElementById('visibilityType').value;
+            const classIds = getSelectedClasses('visibilityClassList');
+
+            const url = contextMenuType === 'folder' ? 
+                `${api.baseUrl}/repository/folder/visibility/${contextMenuItem}` : 
+                `${api.baseUrl}/repository/file/visibility/${contextMenuItem}`;
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ visibilityType, classIds })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('visibilityModal')).hide();
+                    loadFolderTree();
+                    loadFiles();
+                } else {
+                    alert(data.message || '设置失败');
+                }
+            });
+        }
+
+        function deleteItem() {
+            const message = contextMenuType === 'folder' ? 
+                '确定要删除此文件夹吗？文件夹内的所有子文件夹和文件都将被删除，此操作无法撤销。' :
+                '确定要删除此文件吗？此操作无法撤销。';
+            document.getElementById('deleteMessage').textContent = message;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+
+        function confirmDelete() {
+            const url = contextMenuType === 'folder' ? 
+                `${api.baseUrl}/repository/folder/delete/${contextMenuItem}` : 
+                `${api.baseUrl}/repository/file/delete/${contextMenuItem}`;
+
+            fetch(url, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                    if (contextMenuType === 'folder' && contextMenuItem === currentFolderId) {
+                        navigateToFolder(0);
+                    } else {
+                        loadFolderTree();
+                        loadFiles();
+                    }
+                } else {
+                    alert(data.message || '删除失败');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
