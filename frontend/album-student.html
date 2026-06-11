@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班级相册 - 学生中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <style>
+        .nav-link.active { color: var(--primary-color) !important; border-bottom: 2px solid var(--primary-color); }
+        .album-card { cursor: pointer; transition: all 0.3s; border: none; overflow: hidden; }
+        .album-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(0,0,0,0.12); }
+        .album-cover { height: 200px; object-fit: cover; background: #f5f5f5; position: relative; }
+        .album-cover-placeholder { height: 200px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .album-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%); }
+        .album-meta { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px; color: white; z-index: 1; }
+        .masonry { column-count: 3; column-gap: 12px; }
+        .masonry-item { break-inside: avoid; margin-bottom: 12px; position: relative; border-radius: 8px; overflow: hidden; cursor: pointer; }
+        .masonry-item img { width: 100%; display: block; border-radius: 8px; }
+        .masonry-item .item-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.5), transparent 60%); opacity: 0; transition: opacity 0.3s; display: flex; align-items: flex-end; padding: 10px; color: white; font-size: 0.85rem; }
+        .masonry-item:hover .item-overlay { opacity: 1; }
+        @media (max-width: 992px) { .masonry { column-count: 2; } }
+        @media (max-width: 576px) { .masonry { column-count: 1; } }
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .image-grid-item { border-radius: 8px; overflow: hidden; aspect-ratio: 1; cursor: pointer; position: relative; background: #f5f5f5; }
+        .image-grid-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .image-grid-item:hover img { transform: scale(1.05); }
+        .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        .lightbox.active { display: flex; }
+        .lightbox img { max-width: 92vw; max-height: 85vh; object-fit: contain; }
+        .lightbox-close { position: absolute; top: 20px; right: 30px; color: white; font-size: 2.5rem; cursor: pointer; background: none; border: none; }
+        .lightbox-prev, .lightbox-next { position: absolute; top: 50%; transform: translateY(-50%); color: white; font-size: 3.5rem; cursor: pointer; background: none; border: none; }
+        .lightbox-prev { left: 30px; } .lightbox-next { right: 30px; }
+        .lightbox-info { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; text-align: center; }
+        .like-btn { transition: all 0.3s; }
+        .like-btn.liked { color: #dc3545; }
+        .like-btn.liked i { animation: heartBeat 0.4s; }
+        @keyframes heartBeat { 0% { transform: scale(1); } 25% { transform: scale(1.3); } 50% { transform: scale(1); } 75% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        .comment-item { animation: fadeInUp 0.3s; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .badge-featured { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .tab-btn { border: none; background: none; padding: 10px 20px; font-weight: 500; color: #666; border-bottom: 2px solid transparent; transition: all 0.3s; }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .empty-state { text-align: center; padding: 80px 20px; color: #999; }
+        .empty-state i { font-size: 5rem; margin-bottom: 1rem; opacity: 0.25; }
+        .avatar-sm { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-primary" href="student.html">SchoolSystem</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">首页</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">课程介绍</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">教学内容</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">实验内容</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">互动交流</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">我的成绩</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">教师评教</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='student.html'">教学日历</li>
+                    <li class="nav-link px-3" role="button" onclick="location.href='repository-student.html'">教学资料库</li>
+                    <li class="nav-link px-3 active" role="button"><i class="bi bi-images me-1"></i>班级相册</li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <span id="userInfo" class="me-3 text-muted small"></span>
+                    <button class="btn btn-outline-danger btn-sm" onclick="api.clearSession()">登出</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="lightbox" id="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <button class="lightbox-prev" onclick="navLightbox(-1)">&#10094;</button>
+        <img id="lightboxImg" src="" alt="">
+        <button class="lightbox-next" onclick="navLightbox(1)">&#10095;</button>
+        <div class="lightbox-info small" id="lightboxInfo"></div>
+    </div>
+
+    <div class="container py-4">
+        <div id="listView">
+            <div class="d-flex align-items-center mb-4">
+                <h4 class="fw-bold mb-0 me-auto"><i class="bi bi-images text-primary me-2"></i>班级相册</h4>
+                <div class="btn-group">
+                    <button class="tab-btn active" id="tabMyClass" onclick="switchTab('myClass')">
+                        <i class="bi bi-layers me-1"></i>本班相册
+                    </button>
+                    <button class="tab-btn" id="tabFeatured" onclick="switchTab('featured')">
+                        <i class="bi bi-star me-1"></i>全校精选
+                    </button>
+                </div>
+            </div>
+            <div id="albumList" class="row g-4"></div>
+        </div>
+
+        <div id="detailView" class="d-none">
+            <div class="d-flex align-items-center mb-4">
+                <button class="btn btn-outline-secondary me-3" onclick="backToList()">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </button>
+                <h4 class="fw-bold mb-0" id="detailTitle">相册详情</h4>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-0">
+                            <div id="detailCoverWrap" class="position-relative" style="max-height: 400px; overflow: hidden; border-radius: 0.5rem 0.5rem 0 0;">
+                                <div id="detailCover" class="w-100 bg-light" style="height:350px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+                                    <i class="bi bi-image text-white fs-1"></i>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <div class="d-flex align-items-start justify-content-between mb-2">
+                                    <h5 class="fw-bold mb-0" id="detailAlbumTitle"></h5>
+                                    <button class="btn btn-outline-danger like-btn" id="likeBtn" onclick="toggleLike()">
+                                        <i class="bi bi-heart"></i> <span id="likeCountText">0</span>
+                                    </button>
+                                </div>
+                                <div class="text-muted small mb-3" id="detailMeta"></div>
+                                <p class="mb-0" id="detailDescription"></p>
+                                <div class="d-flex gap-4 mt-3 text-muted small">
+                                    <span><i class="bi bi-eye"></i> <span id="detailViewCount">0</span> 次浏览</span>
+                                    <span><i class="bi bi-chat"></i> <span id="detailCommentCount">0</span> 条评论</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold mb-0"><i class="bi bi-grid me-2"></i>相册图片 (<span id="imageCount">0</span>)</h6>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary active" id="viewGrid" onclick="setViewMode('grid')"><i class="bi bi-grid"></i></button>
+                                    <button class="btn btn-outline-primary" id="viewMasonry" onclick="setViewMode('masonry')"><i class="bi bi-columns-gap"></i></button>
+                                </div>
+                            </div>
+                            <div id="imageContainer"></div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-chat-dots me-2"></i>发表评论</h6>
+                            <div class="d-flex gap-3">
+                                <div class="avatar-sm">${(session.user && session.user.username) ? session.user.username.charAt(0) : 'S'}</div>
+                                <div class="flex-grow-1">
+                                    <textarea id="commentInput" class="form-control mb-2" rows="3" placeholder="分享你的想法..."></textarea>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">
+                                                <i class="bi bi-image"></i> 添加图片
+                                                <input type="file" accept="image/*" hidden id="commentImageInput" onchange="handleCommentImage(event)">
+                                            </label>
+                                            <span id="commentImagePreview" class="ms-2"></span>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm" onclick="submitComment()">
+                                            <i class="bi bi-send me-1"></i>发布评论
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <h6 class="fw-bold mb-3">全部评论 (<span id="commentTotal">0</span>)</h6>
+                            <div id="commentList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm sticky-top" style="top: 90px;">
+                        <div class="card-body p-4">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-stars me-2 text-warning"></i>推荐相册</h6>
+                            <div id="recommendList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'student') location.href = 'index.html';
+
+        document.getElementById('userInfo').innerText = `欢迎，${session.user.username}`;
+
+        let currentTab = 'myClass';
+        let currentAlbum = null;
+        let currentImages = [];
+        let currentComments = [];
+        let isLiked = false;
+        let viewMode = 'grid';
+        let lightboxIndex = 0;
+        let pendingCommentImage = null;
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tabMyClass').classList.toggle('active', tab === 'myClass');
+            document.getElementById('tabFeatured').classList.toggle('active', tab === 'featured');
+            loadAlbumList();
+        }
+
+        async function loadAlbumList() {
+            const list = document.getElementById('albumList');
+            list.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>';
+            try {
+                let res;
+                if (currentTab === 'myClass' && session.user.classId) {
+                    res = await api.album.myClass(session.user.classId);
+                } else {
+                    res = await api.album.featured(30);
+                }
+                const albums = res.data || [];
+                if (albums.length === 0) {
+                    list.innerHTML = `<div class="col-12"><div class="empty-state"><i class="bi bi-images"></i>
+                        <h5>${currentTab === 'myClass' ? '本班暂无相册' : '暂无精选相册'}</h5>
+                        <p class="small text-muted">${currentTab === 'myClass' ? '等待老师创建精彩的班级活动相册吧' : '敬请期待各班的精彩活动分享'}</p>
+                    </div></div>`;
+                    return;
+                }
+                list.innerHTML = albums.map(a => `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card album-card h-100 shadow-sm" onclick="openAlbum(${a.id})">
+                            <div class="album-cover">
+                                ${a.coverImage 
+                                    ? `<img src="${a.coverImage}" class="w-100 h-100" style="object-fit:cover" alt="">`
+                                    : `<div class="album-cover-placeholder h-100"><i class="bi bi-images fs-1"></i></div>`}
+                                <div class="album-meta">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        ${a.isFeatured ? '<span class="badge badge-featured"><i class="bi bi-star-fill"></i> 精选</span>' : ''}
+                                        <span class="badge bg-white bg-opacity-25">${a.className || ''}</span>
+                                    </div>
+                                    <h6 class="fw-bold mb-0 text-white">${a.title}</h6>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center text-muted small">
+                                    <span><i class="bi bi-calendar me-1"></i>${a.activityDate ? a.activityDate.split('T')[0] : '-'}</span>
+                                    <div class="d-flex gap-3">
+                                        <span><i class="bi bi-heart"></i> ${a.likeCount || 0}</span>
+                                        <span><i class="bi bi-chat"></i> ${a.commentCount || 0}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<div class="col-12 text-center py-5 text-danger">加载失败</div>';
+            }
+        }
+
+        async function openAlbum(id) {
+            document.getElementById('listView').classList.add('d-none');
+            document.getElementById('detailView').classList.remove('d-none');
+            window.scrollTo(0, 0);
+            try {
+                const res = await api.album.detail(id, session.user.uid, 'student');
+                currentAlbum = res.album;
+                currentImages = res.images || [];
+                currentComments = res.comments || [];
+                isLiked = res.liked;
+                renderDetail(res);
+                loadRecommend();
+            } catch (e) {
+                api.showToast('加载失败', 'danger');
+            }
+        }
+
+        function backToList() {
+            document.getElementById('detailView').classList.add('d-none');
+            document.getElementById('listView').classList.remove('d-none');
+            currentAlbum = null;
+            currentImages = [];
+            closeLightbox();
+        }
+
+        function renderDetail(res) {
+            const a = res.album;
+            document.getElementById('detailTitle').innerText = a.title;
+            document.getElementById('detailAlbumTitle').innerText = a.title;
+            document.getElementById('detailDescription').innerText = a.description || '暂无描述';
+            document.getElementById('detailMeta').innerHTML = `
+                <i class="bi bi-layers me-1"></i>${a.className || '-'}
+                ${a.activityDate ? `<span class="ms-3"><i class="bi bi-calendar me-1"></i>${a.activityDate.split('T')[0]}</span>` : ''}
+                ${a.creatorName ? `<span class="ms-3"><i class="bi bi-person me-1"></i>${a.creatorName}</span>` : ''}
+            `;
+            document.getElementById('detailViewCount').innerText = a.viewCount || 0;
+            document.getElementById('detailCommentCount').innerText = a.commentCount || 0;
+
+            const likeBtn = document.getElementById('likeBtn');
+            document.getElementById('likeCountText').innerText = a.likeCount || 0;
+            likeBtn.classList.toggle('liked', isLiked);
+            likeBtn.innerHTML = isLiked
+                ? `<i class="bi bi-heart-fill"></i> <span>${a.likeCount || 0}</span>`
+                : `<i class="bi bi-heart"></i> <span>${a.likeCount || 0}</span>`;
+
+            const coverDiv = document.getElementById('detailCover');
+            if (a.coverImage) {
+                coverDiv.innerHTML = `<img src="${a.coverImage}" class="w-100 h-100" style="object-fit:cover" alt="" onclick="currentImages.length && openLightbox(0)">`;
+            } else {
+                coverDiv.innerHTML = '<i class="bi bi-image text-white fs-1"></i>';
+            }
+
+            renderImages();
+            renderComments();
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            document.getElementById('viewGrid').classList.toggle('active', mode === 'grid');
+            document.getElementById('viewMasonry').classList.toggle('active', mode === 'masonry');
+            renderImages();
+        }
+
+        function renderImages() {
+            document.getElementById('imageCount').innerText = currentImages.length;
+            const container = document.getElementById('imageContainer');
+            if (currentImages.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding:40px"><i class="bi bi-image"></i><p class="mb-0 small">相册暂无图片</p></div>';
+                return;
+            }
+            if (viewMode === 'grid') {
+                container.innerHTML = `<div class="image-grid">${currentImages.map((img, idx) => `
+                    <div class="image-grid-item" onclick="openLightbox(${idx})">
+                        <img src="${img.imagePath}" alt="" loading="lazy">
+                    </div>
+                `).join('')}</div>`;
+            } else {
+                container.innerHTML = `<div class="masonry">${currentImages.map((img, idx) => `
+                    <div class="masonry-item" onclick="openLightbox(${idx})">
+                        <img src="${img.imagePath}" alt="" loading="lazy">
+                        <div class="item-overlay">${img.imageName || ''}</div>
+                    </div>
+                `).join('')}</div>`;
+            }
+        }
+
+        function renderComments() {
+            document.getElementById('commentTotal').innerText = currentComments.length;
+            const list = document.getElementById('commentList');
+            if (currentComments.length === 0) {
+                list.innerHTML = '<div class="text-center py-4 text-muted small"><i class="bi bi-chat-square me-1"></i>暂无评论，快来发表第一条评论吧</div>';
+                return;
+            }
+            list.innerHTML = currentComments.map(c => `
+                <div class="comment-item d-flex gap-3 py-3 border-bottom">
+                    <div class="avatar-sm">${(c.userName || 'U').charAt(0)}</div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div>
+                                <strong>${c.userName}</strong>
+                                <span class="badge bg-light text-muted ms-2">${c.userType === 'teacher' ? '教师' : '学生'}</span>
+                            </div>
+                            <small class="text-muted">${formatTime(c.createTime)}</small>
+                        </div>
+                        <p class="mb-2">${escapeHtml(c.content)}</p>
+                        ${c.imagePath ? `<img src="${c.imagePath}" class="rounded border" style="max-width:240px;max-height:240px;object-fit:cover;cursor:pointer" onclick="window.open('${c.imagePath}','_blank')">` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadRecommend() {
+            try {
+                const res = await api.album.featured(5);
+                const list = res.data || [];
+                const container = document.getElementById('recommendList');
+                if (list.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted small py-3">暂无推荐</div>';
+                    return;
+                }
+                container.innerHTML = list.filter(a => a.id !== currentAlbum.id).slice(0, 4).map(a => `
+                    <div class="d-flex gap-2 mb-3 cursor-pointer align-items-center" onclick="openAlbum(${a.id})" style="cursor:pointer">
+                        <div class="rounded overflow-hidden flex-shrink-0" style="width:64px;height:64px;background:#f5f5f5">
+                            ${a.coverImage ? `<img src="${a.coverImage}" style="width:100%;height:100%;object-fit:cover">` : '<div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted"><i class="bi bi-image"></i></div>'}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="small fw-bold text-truncate">${a.title}</div>
+                            <div class="text-muted small">${a.className || ''}</div>
+                            <div class="text-muted small"><i class="bi bi-heart"></i> ${a.likeCount || 0}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {}
+        }
+
+        async function toggleLike() {
+            if (!currentAlbum) return;
+            try {
+                const res = await api.album.toggleLike(currentAlbum.id, session.user.uid, 'student');
+                if (res.success) {
+                    isLiked = res.liked;
+                    currentAlbum.likeCount = res.likeCount;
+                    const likeBtn = document.getElementById('likeBtn');
+                    likeBtn.classList.toggle('liked', isLiked);
+                    likeBtn.innerHTML = isLiked
+                        ? `<i class="bi bi-heart-fill"></i> <span>${res.likeCount}</span>`
+                        : `<i class="bi bi-heart"></i> <span>${res.likeCount}</span>`;
+                    document.getElementById('likeCountText').innerText = res.likeCount;
+                }
+            } catch (e) {}
+        }
+
+        function handleCommentImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const check = api.validateImage(file);
+            if (!check.valid) {
+                api.showToast(check.message, 'warning');
+                return;
+            }
+            pendingCommentImage = file;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('commentImagePreview').innerHTML = `
+                    <span class="badge bg-light text-dark align-middle">
+                        <img src="${ev.target.result}" style="width:24px;height:24px;object-fit:cover;border-radius:2px" class="me-1">
+                        ${file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name}
+                        <i class="bi bi-x ms-1 cursor-pointer" onclick="clearCommentImage()" style="cursor:pointer"></i>
+                    </span>
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearCommentImage() {
+            pendingCommentImage = null;
+            document.getElementById('commentImagePreview').innerHTML = '';
+            document.getElementById('commentImageInput').value = '';
+        }
+
+        async function submitComment() {
+            const content = document.getElementById('commentInput').value.trim();
+            if (!content && !pendingCommentImage) {
+                api.showToast('请输入评论内容或添加图片', 'warning');
+                return;
+            }
+            try {
+                let imagePath = null;
+                if (pendingCommentImage) {
+                    const uploadRes = await api.uploadImage(pendingCommentImage);
+                    if (uploadRes && uploadRes.success) {
+                        imagePath = uploadRes.url;
+                    }
+                }
+                const res = await api.album.addComment({
+                    albumId: currentAlbum.id,
+                    userId: session.user.uid,
+                    userName: session.user.username,
+                    userType: 'student',
+                    content,
+                    imagePath
+                });
+                if (res.success) {
+                    api.showToast('评论已发布', 'success');
+                    document.getElementById('commentInput').value = '';
+                    clearCommentImage();
+                    openAlbum(currentAlbum.id);
+                }
+            } catch (e) {
+                api.showToast('评论失败', 'danger');
+            }
+        }
+
+        function openLightbox(idx) {
+            lightboxIndex = idx;
+            updateLightbox();
+            document.getElementById('lightbox').classList.add('active');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        function navLightbox(dir) {
+            lightboxIndex = (lightboxIndex + dir + currentImages.length) % currentImages.length;
+            updateLightbox();
+        }
+
+        function updateLightbox() {
+            if (currentImages[lightboxIndex]) {
+                const img = currentImages[lightboxIndex];
+                document.getElementById('lightboxImg').src = img.imagePath;
+                document.getElementById('lightboxInfo').innerText = `${lightboxIndex + 1} / ${currentImages.length}  ${img.imageName || ''}`;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('lightbox').classList.contains('active')) {
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') navLightbox(-1);
+                if (e.key === 'ArrowRight') navLightbox(1);
+            }
+        });
+
+        function formatTime(t) {
+            if (!t) return '';
+            const d = new Date(t.replace('T', ' '));
+            const now = new Date();
+            const diff = (now - d) / 1000;
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+            if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+            if (diff < 86400 * 7) return Math.floor(diff / 86400) + '天前';
+            return t.replace('T', ' ').substring(0, 16);
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        loadAlbumList();
+    </script>
+</body>
+</html>

@@ -693,3 +693,71 @@ INSERT INTO `repository_file_class` (`file_id`, `class_id`) VALUES
 INSERT INTO `repository_file_pin` (`file_id`, `student_id`) VALUES 
 (1, 1), (2, 1), (6, 1),
 (1, 2), (4, 2);
+
+-- (25) 班级相册表
+CREATE TABLE `class_album` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(200) NOT NULL COMMENT '相册标题',
+    `description` TEXT COMMENT '相册描述',
+    `activity_date` DATE COMMENT '活动日期',
+    `class_id` INT NOT NULL COMMENT '所属班级ID',
+    `class_name` VARCHAR(100) COMMENT '班级名称(冗余)',
+    `cover_image` VARCHAR(500) COMMENT '封面图片路径',
+    `creator_id` INT COMMENT '创建人ID',
+    `creator_name` VARCHAR(50) COMMENT '创建人姓名(冗余)',
+    `creator_type` VARCHAR(20) DEFAULT 'teacher' COMMENT '创建人类型：teacher/student',
+    `like_count` INT DEFAULT 0 COMMENT '点赞数',
+    `view_count` INT DEFAULT 0 COMMENT '浏览数',
+    `comment_count` INT DEFAULT 0 COMMENT '评论数',
+    `is_featured` TINYINT DEFAULT 0 COMMENT '是否精选：0-否，1-是',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_class` (`class_id`),
+    KEY `idx_date` (`activity_date`),
+    KEY `idx_featured` (`is_featured`),
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班级相册表';
+
+-- (26) 相册图片表
+CREATE TABLE `class_album_image` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `album_id` INT NOT NULL COMMENT '相册ID',
+    `image_path` VARCHAR(500) NOT NULL COMMENT '图片存储路径',
+    `image_name` VARCHAR(255) COMMENT '图片原始名称',
+    `image_size` BIGINT DEFAULT 0 COMMENT '图片大小(字节)',
+    `sort_order` INT DEFAULT 0 COMMENT '排序序号',
+    `is_cover` TINYINT DEFAULT 0 COMMENT '是否封面：0-否，1-是',
+    `uploader_id` INT COMMENT '上传人ID',
+    `uploader_name` VARCHAR(50) COMMENT '上传人姓名(冗余)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_album` (`album_id`),
+    FOREIGN KEY (`album_id`) REFERENCES `class_album`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='相册图片表';
+
+-- (27) 相册评论表
+CREATE TABLE `class_album_comment` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `album_id` INT NOT NULL COMMENT '相册ID',
+    `user_id` INT NOT NULL COMMENT '评论人ID(学生或教师)',
+    `user_name` VARCHAR(50) COMMENT '评论人姓名(冗余)',
+    `user_type` VARCHAR(20) DEFAULT 'student' COMMENT '评论人类型：student/teacher',
+    `content` TEXT NOT NULL COMMENT '评论内容',
+    `image_path` VARCHAR(500) COMMENT '评论附图路径(可选)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_album` (`album_id`),
+    KEY `idx_user` (`user_id`),
+    FOREIGN KEY (`album_id`) REFERENCES `class_album`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='相册评论表';
+
+-- (28) 相册点赞表（幂等）
+CREATE TABLE `class_album_like` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `album_id` INT NOT NULL COMMENT '相册ID',
+    `user_id` INT NOT NULL COMMENT '点赞人ID',
+    `user_type` VARCHAR(20) DEFAULT 'student' COMMENT '点赞人类型：student/teacher',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_album_user` (`album_id`, `user_id`, `user_type`),
+    KEY `idx_album` (`album_id`),
+    KEY `idx_user` (`user_id`),
+    FOREIGN KEY (`album_id`) REFERENCES `class_album`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='相册点赞表';
