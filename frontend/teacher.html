@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师管理后台 - SchoolSystemC02</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .nav-link {
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+            padding: 0.8rem 1rem;
+            color: #333;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: #f0f4ff;
+            color: var(--primary-color);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="#" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="#" class="nav-link active" onclick="loadManagePage('user')"><i
+                        class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="#" class="nav-link" onclick="loadManagePage('test')"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="#" class="nav-link" onclick="loadManagePage('classes')"><i class="bi bi-layers"></i>班级管理</a>
+            </li>
+            <li><a href="#" class="nav-link" onclick="loadManagePage('teacher')"><i
+                        class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="#" class="nav-link" onclick="loadManagePage('course')"><i
+                        class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="#" class="nav-link" onclick="loadManagePage('experiment')"><i class="bi bi-vial"></i>实验内容</a>
+            </li>
+            <li><a href="#" class="nav-link" onclick="loadManagePage('interaction')"><i
+                        class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="#" class="nav-link" onclick="loadManagePage('news')"><i class="bi bi-newspaper"></i>技术动态</a>
+            </li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 id="pageTitle" class="fw-bold">学生管理</h4>
+            <div id="actionBtnArea">
+                <button class="btn btn-primary" onclick="showAddModal()">+ 新增</button>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Universal Modal -->
+    <div class="modal fade" id="dataModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalTitle">编辑数据</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalFormBody">
+                    <!-- Dynamic Form -->
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveData()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i>
+                    <h5 class="fw-bold">确认删除？</h5>
+                    <p class="text-muted small">此操作不可撤销，请谨慎操作。</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-light flex-grow-1" data-bs-dismiss="modal">取消</button>
+                        <button class="btn btn-danger flex-grow-1" id="confirmDeleteBtn">确定删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+
+        let currentPage = 'user';
+        let currentData = [];
+        let classesList = [];
+
+        const schemas = {
+            user: {
+                title: '学生管理',
+                endpoint: '/user',
+                fields: [
+                    { label: '姓名', key: 'username', type: 'text' },
+                    { label: '学号', key: 'userno', type: 'text' },
+                    { label: '性别', key: 'usersex', type: 'select', options: ['男', '女'] },
+                    { label: '优秀', key: 'youxiuok', type: 'select', options: ['是', '否'] },
+                    { label: '班级', key: 'classId', type: 'dynamicSelect' },
+                    { label: '状态', key: 'checkedok', type: 'select', options: ['待审核', '已通过', '已拒绝'] }
+                ],
+                headers: ['姓名', '学号', '班级', '优秀', '状态', '操作']
+            },
+            test: {
+                title: '课程介绍',
+                endpoint: '/test',
+                fields: [
+                    { label: '标题', key: 'ttitle', type: 'text' },
+                    { label: '描述', key: 'tcontent', type: 'textarea' }
+                ],
+                headers: ['标题', '描述', '操作']
+            },
+            classes: {
+                title: '班级管理',
+                endpoint: '/classes',
+                fields: [
+                    { label: '班级名称', key: 'cname', type: 'text' },
+                    { label: '描述', key: 'cdescript', type: 'text' }
+                ],
+                headers: ['班级名称', '描述', '操作']
+            },
+            teacher: {
+                title: '教师管理',
+                endpoint: '/teacher',
+                fields: [
+                    { label: '姓名', key: 'tname', type: 'text' },
+                    { label: '编号', key: 'tno', type: 'text' },
+                    { label: '描述', key: 'tdescript', type: 'textarea' }
+                ],
+                headers: ['姓名', '编号', '操作']
+            },
+            course: {
+                title: '教学内容管理',
+                endpoint: '/course',
+                fields: [
+                    { label: '名称', key: 'ctitle', type: 'text' },
+                    { label: '内容', key: 'ccontent', type: 'textarea' },
+                    { label: '文件', key: 'efile', type: 'file' }
+                ],
+                headers: ['内容名称', '文件', '操作']
+            },
+            experiment: {
+                title: '实验内容管理',
+                endpoint: '/experiment',
+                fields: [
+                    { label: '名称', key: 'etitle', type: 'text' },
+                    { label: '内容', key: 'econtent', type: 'textarea' },
+                    { label: '文件', key: 'efile', type: 'file' }
+                ],
+                headers: ['实验名称', '文件', '操作']
+            },
+            interaction: {
+                title: '互动交流',
+                endpoint: '/interaction',
+                fields: [
+                    { label: '回复内容', key: 'comrepl', type: 'textarea' }
+                ],
+                headers: ['提问人', '内容', '回复', '操作'],
+                hideAdd: true
+            },
+            news: {
+                title: '技术动态管理',
+                endpoint: '/news',
+                fields: [
+                    { label: '标题', key: 'newstitle', type: 'text' },
+                    { label: '内容', key: 'newscontent', type: 'textarea' }
+                ],
+                headers: ['标题', '时间', '操作']
+            }
+        };
+
+        async function loadManagePage(page) {
+            currentPage = page;
+            const schema = schemas[page];
+            document.getElementById('pageTitle').innerText = schema.title;
+            document.getElementById('actionBtnArea').style.display = schema.hideAdd ? 'none' : 'block';
+
+            // Highlight nav
+            document.querySelectorAll('.nav-link').forEach(l => {
+                l.classList.remove('active');
+                if (l.innerText.includes(schema.title.substring(0, 2))) l.classList.add('active');
+            });
+
+            const head = document.getElementById('tableHead');
+            head.innerHTML = `<tr>${schema.headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+
+            if (page === 'user') await refreshClasses();
+
+            refreshTable();
+        }
+
+        async function refreshClasses() {
+            classesList = await api.request('/classes/list');
+        }
+
+        async function refreshTable() {
+            const schema = schemas[currentPage];
+            const body = document.getElementById('tableBody');
+            body.innerHTML = '<tr><td colspan="10" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>';
+
+            try {
+                currentData = await api.request(`${schema.endpoint}/list`);
+                body.innerHTML = currentData.map((item, idx) => {
+                    let rows = '';
+                    if (currentPage === 'user') {
+                        rows = `<td>${item.username}</td><td>${item.userno}</td><td>${item.classname}</td>
+                                <td><span class="badge ${item.youxiuok === '是' ? 'bg-info' : 'bg-light text-muted'}">${item.youxiuok}</span></td>
+                                <td><span class="badge ${item.checkedok === '已通过' ? 'bg-success' : (item.checkedok === '待审核' ? 'bg-warning' : 'bg-danger')}">${item.checkedok}</span></td>`;
+                    } else if (currentPage === 'test') {
+                        rows = `<td>${item.ttitle}</td><td class="text-truncate" style="max-width: 200px">${item.tcontent}</td>`;
+                    } else if (currentPage === 'classes') {
+                        rows = `<td>${item.cname}</td><td>${item.cdescript}</td>`;
+                    } else if (currentPage === 'teacher') {
+                        rows = `<td>${item.tname}</td><td>${item.tno}</td>`;
+                    } else if (currentPage === 'course') {
+                        rows = `<td>${item.ctitle}</td><td>${item.efile ? `<a href="/uploads/${item.efile}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark-text"></i> ${item.efile}</a>` : '<span class="badge bg-light text-muted">无文件</span>'}</td>`;
+                    } else if (currentPage === 'experiment') {
+                        rows = `<td>${item.etitle}</td><td>${item.efile ? `<a href="/uploads/${item.efile}" target="_blank" class="text-decoration-none text-success"><i class="bi bi-file-earmark-zip"></i> ${item.efile}</a>` : '<span class="badge bg-light text-muted">无文件</span>'}</td>`;
+                    } else if (currentPage === 'news') {
+                        rows = `<td>${item.newstitle}</td><td>${item.newsdate.split('T')[0]}</td>`;
+                    } else if (currentPage === 'interaction') {
+                        rows = `<td>${item.name}</td><td class="small">${item.comask}</td>
+                                <td class="small text-muted">${item.comrepl || '未回复'}</td>`;
+                    }
+
+                    return `<tr>${rows}<td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showEditModal(${idx})">编辑</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete(${idx})">删除</button>
+                    </td></tr>`;
+                }).join('');
+            } catch (err) { }
+        }
+
+        let editingIdx = -1;
+
+        function showAddModal() {
+            editingIdx = -1;
+            document.getElementById('modalTitle').innerText = '新增' + schemas[currentPage].title;
+            renderForm({});
+            const modal = new bootstrap.Modal(document.getElementById('dataModal'));
+            modal.show();
+        }
+
+        function showEditModal(idx) {
+            editingIdx = idx;
+            const item = currentData[idx];
+            document.getElementById('modalTitle').innerText = '编辑' + schemas[currentPage].title;
+            renderForm(item);
+            const modal = new bootstrap.Modal(document.getElementById('dataModal'));
+            modal.show();
+        }
+
+        function renderForm(data) {
+            const schema = schemas[currentPage];
+            const body = document.getElementById('modalFormBody');
+            body.innerHTML = schema.fields.map(f => {
+                let input = '';
+                const val = data[f.key] || '';
+                if (f.type === 'text') input = `<input type="text" id="f_${f.key}" class="form-control" value="${val}">`;
+                if (f.type === 'file') input = `<input type="file" id="f_${f.key}" class="form-control"> ${val ? `<small class="text-muted">当前文件: ${val}</small>` : ''}`;
+                if (f.type === 'textarea') input = `<textarea id="f_${f.key}" class="form-control" rows="3">${val}</textarea>`;
+                if (f.type === 'select') {
+                    input = `<select id="f_${f.key}" class="form-select">${f.options.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+                }
+                if (f.type === 'dynamicSelect') {
+                    input = `<select id="f_${f.key}" class="form-select">${classesList.map(c => `<option value="${c.cid}" ${val == c.cid ? 'selected' : ''}>${c.cname}</option>`).join('')}</select>`;
+                }
+                return `<div class="mb-3"><label class="form-label">${f.label}</label>${input}</div>`;
+            }).join('');
+        }
+
+        async function saveData() {
+            const schema = schemas[currentPage];
+            const item = editingIdx === -1 ? {} : { ...currentData[editingIdx] };
+
+            for (const f of schema.fields) {
+                const input = document.getElementById(`f_${f.key}`);
+                if (input) {
+                    if (f.type === 'file' && input.files.length > 0) {
+                        const formData = new FormData();
+                        formData.append('file', input.files[0]);
+                        try {
+                            const res = await fetch(api.baseUrl + '/file/upload', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            const uploadResult = await res.json();
+                            if (uploadResult.success) {
+                                item[f.key] = uploadResult.filename;
+                            } else {
+                                api.showToast('文件上传失败: ' + uploadResult.message, 'danger');
+                                return;
+                            }
+                        } catch (err) {
+                            api.showToast('文件上传连接错误', 'danger');
+                            return;
+                        }
+                    } else if (f.type !== 'file') {
+                        item[f.key] = input.value;
+                        if (f.type === 'dynamicSelect') {
+                            item.classname = input.options[input.selectedIndex].text;
+                        }
+                    }
+                }
+            }
+
+            // Special interaction logic
+            if (currentPage === 'interaction' && editingIdx !== -1) {
+                item.replname = session.user.tname;
+                try {
+                    await api.request('/interaction/reply', { method: 'POST', body: JSON.stringify(item) });
+                    api.showToast('回复成功', 'success');
+                } catch (err) { return; }
+            } else {
+                try {
+                    await api.request(`${schema.endpoint}/save`, { method: 'POST', body: JSON.stringify(item) });
+                    api.showToast('保存成功', 'success');
+                } catch (err) { return; }
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('dataModal')).hide();
+            refreshTable();
+        }
+
+        async function confirmDelete(idx) {
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            document.getElementById('confirmDeleteBtn').onclick = async () => {
+                const schema = schemas[currentPage];
+                const id = currentData[idx].uid || currentData[idx].tid || currentData[idx].cid || currentData[idx].nid || currentData[idx].eid || currentData[idx].id;
+                try {
+                    await api.request(`${schema.endpoint}/delete/${id}`, { method: 'DELETE' });
+                    api.showToast('删除成功', 'success');
+                    modal.hide();
+                    refreshTable();
+                } catch (err) { }
+            };
+            modal.show();
+        }
+
+        loadManagePage('user');
+    </script>
+</body>
+
+</html>

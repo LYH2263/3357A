@@ -1,0 +1,79 @@
+:root {
+    --primary-color: #4e73df;
+    --secondary-color: #858796;
+    --success-color: #1cc88a;
+    --info-color: #36b9cc;
+    --bg-gradient: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
+    --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+body {
+    background-color: #f8f9fc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.bg-gradient-primary {
+    background: var(--bg-gradient);
+}
+
+.card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: var(--card-shadow);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #2e59d9;
+    transform: translateY(-1px);
+}
+
+.navbar {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
+}
+
+.nav-link {
+    font-weight: 600;
+}
+
+.sidebar {
+    min-height: 100vh;
+    background-color: #fff;
+    border-right: 1px solid #e3e6f0;
+}
+
+.login-container {
+    max-width: 450px;
+    margin-top: 100px;
+}
+
+.glass-morphism {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Skeleton Animation */
+.skeleton {
+    background: #e1e9ee;
+    background-image: linear-gradient(90deg, #e1e9ee 0px, #f2f8fc 40px, #e1e9ee 80px);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: -100px 0; }
+    100% { background-position: 100px 0; }
+}
+
+/* Modal confirm button red theme */
+.btn-danger {
+    border-radius: 0.5rem;
+}

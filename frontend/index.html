@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - SchoolSystemC02</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-primary">
+    <div class="container login-container">
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <h1 class="h4 text-gray-900 mb-4">欢迎回来</h1>
+                    <p class="text-muted">教学平台系统 - SchoolSystemC02</p>
+                </div>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" id="username" class="form-control" required placeholder="请输入用户名">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码</label>
+                        <input type="password" id="password" class="form-control" required placeholder="请输入密码">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">身份角色</label>
+                        <select id="role" class="form-select">
+                            <option value="student">学生用户</option>
+                            <option value="teacher">教师用户</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2">登 录</button>
+                    <hr>
+                    <div class="text-center">
+                        <a class="small" href="register.html">注册学生账号</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+
+            try {
+                const res = await api.request('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password, role })
+                });
+
+                if (res.success) {
+                    api.setSession(res.user, res.role);
+                    api.showToast('登录成功，欢迎使用', 'success');
+                    setTimeout(() => {
+                        window.location.href = res.role === 'teacher' ? 'teacher.html' : 'student.html';
+                    }, 1000);
+                } else {
+                    api.showToast(res.message, 'danger');
+                }
+            } catch (err) {
+                api.showToast('服务器连接失败', 'danger');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生中心 - SchoolSystemC02</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <style>
+        .nav-link.active {
+            color: var(--primary-color) !important;
+            border-bottom: 2px solid var(--primary-color);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-primary" href="#">SchoolSystem</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-link px-3 active" role="button" onclick="showSection('home')">首页</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('course-intro')">课程介绍</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('teaching')">教学内容</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('experiment')">实验内容</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('interact')">互动交流</li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <span id="userInfo" class="me-3 text-muted small"></span>
+                    <button class="btn btn-outline-danger btn-sm" onclick="api.clearSession()">登出</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <!-- Home Section -->
+        <div id="home-section" class="section">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card p-4 mb-4">
+                        <h5 class="fw-bold mb-3">最新技术动态</h5>
+                        <div id="news-list" class="list-group list-group-flush">
+                            <!-- JS loaded -->
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-4 text-center">
+                        <img id="userPic" src="https://ui-avatars.com/api/?name=%E5%AD%A6&background=0D6EFD&color=fff"
+                            class="rounded-circle mx-auto mb-3" style="width: 80px; height: 80px; object-fit: cover;">
+                        <h6 id="userName" class="fw-bold"></h6>
+                        <p id="userNo" class="text-muted small mb-0"></p>
+                        <p id="userClass" class="text-muted small"></p>
+                        <hr>
+                        <div class="text-start">
+                            <p class="small text-muted mb-1">个人描述：</p>
+                            <p id="userDesc" class="small"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Intro Section -->
+        <div id="course-intro-section" class="section d-none">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">课程介绍查询</h5>
+                    <div class="input-group" style="max-width: 300px;">
+                        <input type="text" id="courseSearchInput" class="form-control" placeholder="输入关键字...">
+                        <button class="btn btn-primary" onclick="searchCourseIntro()">搜索</button>
+                    </div>
+                </div>
+                <div class="row" id="course-intro-list">
+                    <!-- JS loaded -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Teaching Content Section -->
+        <div id="teaching-section" class="section d-none">
+            <div class="card p-4">
+                <h5 class="fw-bold mb-4">教学内容列表</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>摘要</th>
+                                <th>附件</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teaching-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experiment Content Section -->
+        <div id="experiment-section" class="section d-none">
+            <div class="card p-4">
+                <h5 class="fw-bold mb-4">实验内容列表</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>实验名称</th>
+                                <th>任务详情</th>
+                                <th>相关文件</th>
+                            </tr>
+                        </thead>
+                        <tbody id="experiment-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interact Section -->
+        <div id="interact-section" class="section d-none">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card p-4">
+                        <h5 class="fw-bold mb-3">发起提问</h5>
+                        <form id="askForm">
+                            <div class="mb-3">
+                                <label class="form-label">问题内容</label>
+                                <textarea id="askContent" class="form-control" rows="5" required
+                                    placeholder="请描述您的问题..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">提交问题</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card p-4">
+                        <h5 class="fw-bold mb-3">我的提问与解答</h5>
+                        <div id="interaction-list" class="list-group gap-3">
+                            <!-- JS loaded -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'student') location.href = 'index.html';
+
+        // Init User Info
+        document.getElementById('userInfo').innerText = `欢迎，${session.user.username}`;
+        document.getElementById('userName').innerText = session.user.username;
+        document.getElementById('userNo').innerText = '学号: ' + session.user.userno;
+        document.getElementById('userClass').innerText = session.user.classname;
+        document.getElementById('userDesc').innerText = session.user.userdescript || '暂无描述';
+        document.getElementById('userPic').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.username)}&background=random`;
+
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('d-none'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById(`${id}-section`).classList.remove('d-none');
+            event.target.classList.add('active');
+
+            if (id === 'home') loadNews();
+            if (id === 'course-intro') loadCourseIntros();
+            if (id === 'teaching') loadTeaching();
+            if (id === 'experiment') loadExperiments();
+            if (id === 'interact') loadInteractions();
+        }
+
+        async function loadNews() {
+            const list = document.getElementById('news-list');
+            list.innerHTML = '<div class="skeleton" style="height: 100px;"></div>';
+            try {
+                const data = await api.request('/news/list');
+                list.innerHTML = data.slice(0, 10).map(n => `
+                    <div class="list-group-item border-0 px-0 py-3">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-1 fw-bold">${n.newstitle}</h6>
+                            <small class="text-muted">${n.newsdate.split('T')[0]}</small>
+                        </div>
+                        <p class="mb-1 text-muted small text-truncate">${n.newscontent}</p>
+                    </div>
+                `).join('');
+            } catch (err) { }
+        }
+
+        async function loadCourseIntros() {
+            const list = document.getElementById('course-intro-list');
+            try {
+                const data = await api.request('/test/list');
+                renderCourseIntros(data);
+            } catch (err) { }
+        }
+
+        async function searchCourseIntro() {
+            const keyword = document.getElementById('courseSearchInput').value;
+            const list = document.getElementById('course-intro-list');
+            try {
+                const data = await api.request(`/test/search?keyword=${keyword}`);
+                renderCourseIntros(data);
+            } catch (err) { }
+        }
+
+        function renderCourseIntros(data) {
+            const list = document.getElementById('course-intro-list');
+            list.innerHTML = data.map(c => `
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 p-3 bg-light">
+                        <h6 class="fw-bold">${c.ttitle}</h6>
+                        <p class="small text-muted mb-0">${c.tcontent}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadTeaching() {
+            const list = document.getElementById('teaching-list');
+            try {
+                const data = await api.request('/course/list');
+                list.innerHTML = data.map(c => `
+                    <tr>
+                        <td>${c.ctitle}</td>
+                        <td class="small text-muted">${c.ccontent}</td>
+                        <td>
+                            ${c.efile ? `<a href="/uploads/${c.efile}" class="btn btn-sm btn-outline-primary" target="_blank"><i class="bi bi-eye"></i> 查看内容</a>` : '<span class="text-muted small">暂无附件</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) { }
+        }
+
+        async function loadExperiments() {
+            const list = document.getElementById('experiment-list');
+            try {
+                const data = await api.request('/experiment/list');
+                list.innerHTML = data.map(e => `
+                    <tr>
+                        <td>${e.etitle}</td>
+                        <td class="small text-muted">${e.econtent}</td>
+                        <td>
+                            ${e.efile ? `<a href="/uploads/${e.efile}" class="btn btn-sm btn-outline-success" target="_blank"><i class="bi bi-file-earmark-arrow-down"></i> 查看配套文件</a>` : '<span class="text-muted small">暂无文件</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) { }
+        }
+
+        async function loadInteractions() {
+            const list = document.getElementById('interaction-list');
+            try {
+                const data = await api.request('/interaction/list');
+                const myQuestions = data.filter(i => i.name === session.user.username);
+                list.innerHTML = myQuestions.map(i => `
+                    <div class="list-group-item border shadow-sm">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="badge bg-primary">我提问:</span>
+                            <small class="text-muted">${i.asktime.replace('T', ' ')}</small>
+                        </div>
+                        <p class="mb-3">${i.comask}</p>
+                        ${i.comrepl ? `
+                            <div class="bg-light p-3 rounded">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-success small fw-bold">${i.replname} 回答：</span>
+                                    <small class="text-muted">${i.repltime.replace('T', ' ')}</small>
+                                </div>
+                                <p class="mb-0 small">${i.comrepl}</p>
+                            </div>
+                        ` : '<div class="text-muted small italic">等待老师回答...</div>'}
+                    </div>
+                `).join('');
+            } catch (err) { }
+        }
+
+        document.getElementById('askForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const content = document.getElementById('askContent').value;
+            try {
+                await api.request('/interaction/ask', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: session.user.username,
+                        comask: content
+                    })
+                });
+                api.showToast('提问成功', 'success');
+                document.getElementById('askContent').value = '';
+                loadInteractions();
+            } catch (err) { }
+        });
+
+        loadNews(); // Init
+    </script>
+</body>
+
+</html>
