@@ -30,6 +30,7 @@
                     <li class="nav-link px-3" role="button" onclick="showSection('experiment')">实验内容</li>
                     <li class="nav-link px-3" role="button" onclick="showSection('interact')">互动交流</li>
                     <li class="nav-link px-3" role="button" onclick="showSection('score')">我的成绩</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('evaluation')">教师评教</li>
                 </ul>
                 <div class="d-flex align-items-center">
                     <span id="userInfo" class="me-3 text-muted small"></span>
@@ -195,6 +196,46 @@
                 </div>
             </div>
         </div>
+
+        <!-- Evaluation Section -->
+        <div id="evaluation-section" class="section d-none">
+            <div class="card p-4 mb-4">
+                <h5 class="fw-bold mb-3">教师评教</h5>
+                <p class="text-muted small mb-3">请根据各位老师的教学情况，实事求是地进行评价。您的评价将完全匿名，仅用于教学质量改进。</p>
+                
+                <div id="eval-activity-list" class="mb-4">
+                    <div class="text-center py-4 text-muted">加载中...</div>
+                </div>
+            </div>
+
+            <div id="eval-teacher-list-container" class="card p-4 mb-4 d-none">
+                <div class="d-flex align-items-center mb-3">
+                    <button class="btn btn-outline-secondary btn-sm me-3" onclick="backToEvalActivities()">
+                        <i class="bi bi-arrow-left"></i> 返回
+                    </button>
+                    <h5 class="fw-bold mb-0" id="eval-current-activity-title">参评教师</h5>
+                </div>
+                <div id="eval-teacher-list"></div>
+            </div>
+
+            <div id="eval-form-container" class="card p-4 d-none">
+                <div class="d-flex align-items-center mb-4">
+                    <button class="btn btn-outline-secondary btn-sm me-3" onclick="backToEvalTeachers()">
+                        <i class="bi bi-arrow-left"></i> 返回
+                    </button>
+                    <h5 class="fw-bold mb-0" id="eval-form-title">评价教师</h5>
+                </div>
+                <form id="eval-form">
+                    <div id="eval-dimensions"></div>
+                    <div class="mb-3">
+                        <label class="form-label">文字评语（可选）</label>
+                        <textarea id="eval-comment" class="form-control" rows="4" placeholder="请写下您的意见和建议..."></textarea>
+                        <div class="form-text">您的评语将完全匿名提交</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">提交评价</button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -223,6 +264,7 @@
             if (id === 'experiment') loadExperiments();
             if (id === 'interact') loadInteractions();
             if (id === 'score') loadMyScores();
+            if (id === 'evaluation') loadEvalActivities();
         }
 
         async function loadNews() {
@@ -474,6 +516,234 @@
                 document.getElementById('askContent').value = '';
                 loadInteractions();
             } catch (err) { }
+        });
+
+        let currentEvalActivityId = null;
+        let currentEvalTeacherId = null;
+        let currentEvalDimensions = [];
+
+        async function loadEvalActivities() {
+            const list = document.getElementById('eval-activity-list');
+            document.getElementById('eval-teacher-list-container').classList.add('d-none');
+            document.getElementById('eval-form-container').classList.add('d-none');
+            document.getElementById('eval-activity-list').parentElement.classList.remove('d-none');
+
+            list.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+            try {
+                const data = await api.request(`/evaluation/student/activities?studentId=${session.user.uid}`);
+                const activities = data.activities || [];
+
+                if (activities.length === 0) {
+                    list.innerHTML = '<div class="text-center py-4 text-muted">暂无评教活动</div>';
+                    return;
+                }
+
+                list.innerHTML = activities.map(act => {
+                    const isOngoing = act.isOngoing;
+                    const statusClass = isOngoing ? 'bg-success' : 'bg-secondary';
+                    const statusText = isOngoing ? '进行中' : (act.status === 'ended' ? '已结束' : '未开始');
+                    const startTime = act.startTime ? new Date(act.startTime).toLocaleDateString('zh-CN') : '';
+                    const endTime = act.endTime ? new Date(act.endTime).toLocaleDateString('zh-CN') : '';
+                    const progressPct = act.totalTeachers > 0 ? Math.round(act.submittedCount / act.totalTeachers * 100) : 0;
+                    const canEnter = isOngoing;
+
+                    return `
+                        <div class="card mb-3 ${canEnter ? 'cursor-pointer' : ''}" 
+                             ${canEnter ? `onclick="enterEvalActivity(${act.id})"` : ''}
+                             style="${canEnter ? 'cursor: pointer;' : ''}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="fw-bold mb-0">${act.title}</h6>
+                                    <span class="badge ${statusClass}">${statusText}</span>
+                                </div>
+                                <p class="text-muted small mb-2">${act.description || '暂无描述'}</p>
+                                <div class="d-flex justify-content-between align-items-center small">
+                                    <span class="text-muted">
+                                        <i class="bi bi-calendar3 me-1"></i>${startTime} ~ ${endTime}
+                                    </span>
+                                    <span class="text-muted">
+                                        已完成 <strong class="text-primary">${act.submittedCount}</strong>/${act.totalTeachers} 位教师
+                                    </span>
+                                </div>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar ${act.allSubmitted ? 'bg-success' : ''}" style="width: ${progressPct}%"></div>
+                                </div>
+                                ${canEnter ? '<div class="text-end mt-2"><span class="text-primary small">点击进入 <i class="bi bi-arrow-right"></i></span></div>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                list.innerHTML = '<div class="text-center py-4 text-danger">加载失败</div>';
+            }
+        }
+
+        async function enterEvalActivity(activityId) {
+            currentEvalActivityId = activityId;
+            document.getElementById('eval-activity-list').parentElement.classList.add('d-none');
+            document.getElementById('eval-teacher-list-container').classList.remove('d-none');
+
+            const list = document.getElementById('eval-teacher-list');
+            list.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+            try {
+                const teachers = await api.request(`/evaluation/student/teachers?activityId=${activityId}&studentId=${session.user.uid}`);
+
+                document.getElementById('eval-current-activity-title').textContent = '选择教师进行评价';
+
+                if (teachers.length === 0) {
+                    list.innerHTML = '<div class="text-center py-4 text-muted">暂无参评教师</div>';
+                    return;
+                }
+
+                list.innerHTML = teachers.map(t => `
+                    <div class="card mb-2 ${t.submitted ? '' : 'cursor-pointer'}" 
+                         ${t.submitted ? '' : `onclick="enterEvalForm(${t.teacherId}, '${t.teacherName}')"`}>
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3"
+                                     style="width: 48px; height: 48px; font-size: 1.2rem;">
+                                    ${t.teacherName.charAt(0)}
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0">${t.teacherName}</h6>
+                                    <small class="text-muted">${t.submitted ? '已评价' : '待评价'}</small>
+                                </div>
+                            </div>
+                            <div>
+                                ${t.submitted 
+                                    ? '<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>已完成</span>' 
+                                    : '<i class="bi bi-chevron-right text-muted"></i>'}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                list.innerHTML = '<div class="text-center py-4 text-danger">加载失败</div>';
+            }
+        }
+
+        function backToEvalActivities() {
+            document.getElementById('eval-teacher-list-container').classList.add('d-none');
+            document.getElementById('eval-form-container').classList.add('d-none');
+            document.getElementById('eval-activity-list').parentElement.classList.remove('d-none');
+            loadEvalActivities();
+        }
+
+        async function enterEvalForm(teacherId, teacherName) {
+            currentEvalTeacherId = teacherId;
+            document.getElementById('eval-teacher-list-container').classList.add('d-none');
+            document.getElementById('eval-form-container').classList.remove('d-none');
+
+            document.getElementById('eval-form-title').textContent = `评价 ${teacherName}`;
+            document.getElementById('eval-comment').value = '';
+
+            try {
+                const formData = await api.request(`/evaluation/student/form?activityId=${currentEvalActivityId}&teacherId=${teacherId}`);
+                currentEvalDimensions = formData.dimensions || [];
+
+                const dimContainer = document.getElementById('eval-dimensions');
+                dimContainer.innerHTML = currentEvalDimensions.map((dim, index) => `
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold mb-0">
+                                ${index + 1}. ${dim.name}
+                                <span class="badge bg-light text-dark ms-2">权重 ${dim.weight}%</span>
+                            </label>
+                            <span class="text-primary fw-bold" id="dim-score-${dim.id}">0 分</span>
+                        </div>
+                        <div class="d-flex gap-2 justify-content-center">
+                            ${[1, 2, 3, 4, 5].map(score => `
+                                <button type="button" class="btn btn-outline-primary rating-btn" 
+                                        data-dim="${dim.id}" data-score="${score}"
+                                        onclick="setDimensionScore(${dim.id}, ${score})"
+                                        style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                    ${score}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div class="text-center small text-muted mt-1">
+                            1分=很差，3分=一般，5分=很好
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                api.showToast('加载失败', 'danger');
+            }
+        }
+
+        function setDimensionScore(dimId, score) {
+            const buttons = document.querySelectorAll(`.rating-btn[data-dim="${dimId}"]`);
+            buttons.forEach(btn => {
+                const btnScore = parseInt(btn.dataset.score);
+                if (btnScore <= score) {
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-primary');
+                } else {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-outline-primary');
+                }
+            });
+            document.getElementById(`dim-score-${dimId}`).textContent = score + ' 分';
+        }
+
+        function backToEvalTeachers() {
+            document.getElementById('eval-form-container').classList.add('d-none');
+            document.getElementById('eval-teacher-list-container').classList.remove('d-none');
+        }
+
+        document.getElementById('eval-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const scores = {};
+            let allScored = true;
+            for (const dim of currentEvalDimensions) {
+                const buttons = document.querySelectorAll(`.rating-btn[data-dim="${dim.id}"]`);
+                let score = 0;
+                buttons.forEach(btn => {
+                    if (btn.classList.contains('btn-primary')) {
+                        score = parseInt(btn.dataset.score);
+                    }
+                });
+                if (score === 0) {
+                    allScored = false;
+                    break;
+                }
+                scores[dim.id] = score;
+            }
+
+            if (!allScored) {
+                api.showToast('请完成所有维度的评分', 'warning');
+                return;
+            }
+
+            const comment = document.getElementById('eval-comment').value.trim();
+
+            try {
+                await api.request('/evaluation/student/submit', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        activityId: currentEvalActivityId,
+                        studentId: session.user.uid,
+                        teacherId: currentEvalTeacherId,
+                        scores,
+                        comment
+                    })
+                });
+
+                api.showToast('评价提交成功，感谢您的反馈！', 'success');
+                backToEvalTeachers();
+                enterEvalActivity(currentEvalActivityId);
+            } catch (err) {
+                try {
+                    const errData = await err.json();
+                    api.showToast(errData.message || '提交失败', 'danger');
+                } catch {
+                    api.showToast('提交失败', 'danger');
+                }
+            }
         });
 
         loadNews(); // Init

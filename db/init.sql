@@ -370,3 +370,150 @@ INSERT INTO `news` (newstitle, newscontent, newsdate) VALUES
 ('技术前沿28', '内容详情28', '2026-02-28 08:00:00'),
 ('技术前沿29', '内容详情29', '2026-03-01 08:00:00'),
 ('技术前沿30', '内容详情30', '2026-03-02 08:00:00');
+
+-- (11) 评教活动表
+CREATE TABLE `evaluation_activity` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(200) NOT NULL COMMENT '活动标题',
+    `description` TEXT COMMENT '活动说明',
+    `start_time` DATETIME NOT NULL COMMENT '评教开始时间',
+    `end_time` DATETIME NOT NULL COMMENT '评教结束时间',
+    `status` VARCHAR(20) DEFAULT 'ongoing' COMMENT '状态：ongoing-进行中，ended-已结束',
+    `creator_id` INT COMMENT '创建人ID',
+    `creator_type` VARCHAR(20) DEFAULT 'teacher' COMMENT '创建人类型：teacher/admin',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_status` (`status`),
+    KEY `idx_time` (`start_time`, `end_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教活动表';
+
+-- (12) 评价维度表
+CREATE TABLE `evaluation_dimension` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `name` VARCHAR(100) NOT NULL COMMENT '维度名称',
+    `weight` DECIMAL(5,2) NOT NULL COMMENT '权重(%)',
+    `sort_order` INT DEFAULT 0 COMMENT '排序',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_activity` (`activity_id`),
+    FOREIGN KEY (`activity_id`) REFERENCES `evaluation_activity`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价维度表';
+
+-- (13) 评教活动-班级关联表
+CREATE TABLE `evaluation_activity_class` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `class_id` INT NOT NULL COMMENT '班级ID',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_activity_class` (`activity_id`, `class_id`),
+    FOREIGN KEY (`activity_id`) REFERENCES `evaluation_activity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教活动班级关联表';
+
+-- (14) 评教活动-教师关联表
+CREATE TABLE `evaluation_activity_teacher` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `teacher_id` INT NOT NULL COMMENT '教师ID',
+    `teacher_name` VARCHAR(50) COMMENT '教师姓名(冗余)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_activity_teacher` (`activity_id`, `teacher_id`),
+    KEY `idx_teacher` (`teacher_id`),
+    FOREIGN KEY (`activity_id`) REFERENCES `evaluation_activity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`teacher_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教活动教师关联表';
+
+-- (15) 评教提交记录表（防重复评价）
+CREATE TABLE `evaluation_submit` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `student_id` INT NOT NULL COMMENT '学生ID',
+    `teacher_id` INT NOT NULL COMMENT '教师ID',
+    `anonymous_token` VARCHAR(64) NOT NULL COMMENT '匿名令牌，用于关联评价内容',
+    `submit_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_activity_student_teacher` (`activity_id`, `student_id`, `teacher_id`),
+    KEY `idx_student` (`student_id`),
+    KEY `idx_teacher` (`teacher_id`),
+    FOREIGN KEY (`activity_id`) REFERENCES `evaluation_activity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`uid`) ON DELETE CASCADE,
+    FOREIGN KEY (`teacher_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教提交记录表';
+
+-- (16) 评教评分记录表（匿名）
+CREATE TABLE `evaluation_score` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `teacher_id` INT NOT NULL COMMENT '教师ID',
+    `dimension_id` INT NOT NULL COMMENT '维度ID',
+    `score` TINYINT NOT NULL COMMENT '评分(1-5)',
+    `anonymous_token` VARCHAR(64) NOT NULL COMMENT '匿名令牌',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_activity_teacher` (`activity_id`, `teacher_id`),
+    KEY `idx_dimension` (`dimension_id`),
+    KEY `idx_token` (`anonymous_token`),
+    FOREIGN KEY (`activity_id`) REFERENCES `evaluation_activity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`teacher_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE,
+    FOREIGN KEY (`dimension_id`) REFERENCES `evaluation_dimension`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教评分记录表';
+
+-- (17) 评教评语表（匿名）
+CREATE TABLE `evaluation_comment` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `teacher_id` INT NOT NULL COMMENT '教师ID',
+    `comment` TEXT COMMENT '文字评语',
+    `anonymous_token` VARCHAR(64) NOT NULL COMMENT '匿名令牌',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_activity_teacher` (`activity_id`, `teacher_id`),
+    KEY `idx_token` (`anonymous_token`),
+    FOREIGN KEY (`activity_id`) REFERENCES `evaluation_activity`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`teacher_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评教评语表';
+
+-- Seeding evaluation data
+INSERT INTO `evaluation_activity` (`title`, `description`, `start_time`, `end_time`, `status`, `creator_id`) VALUES 
+('2026春季学期教学评价', '请同学们根据本学期各位老师的教学情况，实事求是地进行评价，您的意见对我们非常重要。', '2026-06-01 00:00:00', '2026-07-15 23:59:59', 'ongoing', 1),
+('2025秋季学期教学评价', '2025秋季学期教师教学质量评价活动。', '2025-12-01 00:00:00', '2026-01-15 23:59:59', 'ended', 2);
+
+INSERT INTO `evaluation_dimension` (`activity_id`, `name`, `weight`, `sort_order`) VALUES 
+(1, '教学态度', 25.00, 1),
+(1, '内容质量', 35.00, 2),
+(1, '答疑及时性', 20.00, 3),
+(1, '课堂互动', 20.00, 4),
+(2, '教学态度', 30.00, 1),
+(2, '内容质量', 40.00, 2),
+(2, '答疑及时性', 30.00, 3);
+
+INSERT INTO `evaluation_activity_class` (`activity_id`, `class_id`) VALUES 
+(1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
+(2, 1), (2, 2), (2, 3);
+
+INSERT INTO `evaluation_activity_teacher` (`activity_id`, `teacher_id`, `teacher_name`) VALUES 
+(1, 1, '张老师'), (1, 2, '李老师'), (1, 3, '王老师'), (1, 4, '赵老师'), (1, 5, '孙老师'),
+(2, 1, '张老师'), (2, 2, '李老师'), (2, 3, '王老师');
+
+INSERT INTO `evaluation_submit` (`activity_id`, `student_id`, `teacher_id`, `anonymous_token`) VALUES 
+(2, 1, 1, 'tok_abc123def456'),
+(2, 1, 2, 'tok_xyz789uvw012'),
+(2, 2, 1, 'tok_rst345opq678'),
+(2, 2, 2, 'tok_mno901jkl234');
+
+INSERT INTO `evaluation_score` (`activity_id`, `teacher_id`, `dimension_id`, `score`, `anonymous_token`) VALUES 
+(2, 1, 5, 5, 'tok_abc123def456'),
+(2, 1, 6, 4, 'tok_abc123def456'),
+(2, 1, 7, 5, 'tok_abc123def456'),
+(2, 2, 5, 4, 'tok_xyz789uvw012'),
+(2, 2, 6, 5, 'tok_xyz789uvw012'),
+(2, 2, 7, 3, 'tok_xyz789uvw012'),
+(2, 1, 5, 4, 'tok_rst345opq678'),
+(2, 1, 6, 5, 'tok_rst345opq678'),
+(2, 1, 7, 4, 'tok_rst345opq678'),
+(2, 2, 5, 5, 'tok_mno901jkl234'),
+(2, 2, 6, 4, 'tok_mno901jkl234'),
+(2, 2, 7, 5, 'tok_mno901jkl234');
+
+INSERT INTO `evaluation_comment` (`activity_id`, `teacher_id`, `comment`, `anonymous_token`) VALUES 
+(2, 1, '老师讲课非常认真，知识点讲解清晰，很有耐心。', 'tok_abc123def456'),
+(2, 2, '内容很充实，但希望课后答疑能更及时一些。', 'tok_xyz789uvw012'),
+(2, 1, '课堂氛围很好，老师很有感染力。', 'tok_rst345opq678'),
+(2, 2, '教学内容很有深度，收获很大。', 'tok_mno901jkl234');

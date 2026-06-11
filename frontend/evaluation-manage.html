@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师评教管理 - SchoolSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .nav-link {
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+            padding: 0.8rem 1rem;
+            color: #333;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: #f0f4ff;
+            color: var(--primary-color);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+
+        .status-ongoing {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-ended {
+            background: #e2e3e5;
+            color: #41464b;
+        }
+
+        .activity-card {
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .activity-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .score-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #e9ecef;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .rank-badge {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .rank-1 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #8b4513;
+        }
+
+        .rank-2 {
+            background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+            color: #4a4a4a;
+        }
+
+        .rank-3 {
+            background: linear-gradient(135deg, #cd7f32 0%, #e8a862 100%);
+            color: #fff;
+        }
+
+        .comment-item {
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.8rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+
+        .dimension-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #e7f1ff;
+            color: #0d6efd;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            border: none;
+            background: none;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .stat-card {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #adb5bd;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar d-flex flex-column p-3 bg-white border-end">
+        <a href="teacher.html" class="d-flex align-items-center mb-3 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="#" class="nav-link active"><i class="bi bi-star-half"></i>教师评教</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold"><i class="bi bi-star-half text-primary me-2"></i>教师评教管理</h4>
+            <button class="btn btn-primary" onclick="showCreateModal()">
+                <i class="bi bi-plus-lg me-1"></i>发布评教活动
+            </button>
+        </div>
+
+        <div class="d-flex gap-2 mb-4 border-bottom">
+            <button class="tab-btn active" onclick="switchTab('activities')" id="tab-activities">评教活动</button>
+            <button class="tab-btn" onclick="switchTab('myResult')" id="tab-myResult">我的评教结果</button>
+            <button class="tab-btn" onclick="switchTab('ranking')" id="tab-ranking">全校排行</button>
+        </div>
+
+        <div id="activities-view">
+            <div class="row g-3" id="activityList"></div>
+        </div>
+
+        <div id="myResult-view" class="d-none">
+            <div class="card p-4">
+                <div class="mb-3">
+                    <label class="form-label">选择活动</label>
+                    <select id="myResultActivitySelect" class="form-select" onchange="loadMyResult()">
+                        <option value="">请选择评教活动</option>
+                    </select>
+                </div>
+                <div id="myResultContent"></div>
+            </div>
+        </div>
+
+        <div id="ranking-view" class="d-none">
+            <div class="card p-4">
+                <div class="mb-3">
+                    <label class="form-label">选择活动</label>
+                    <select id="rankingActivitySelect" class="form-select" onchange="loadRanking()">
+                        <option value="">请选择评教活动</option>
+                    </select>
+                </div>
+                <div id="rankingContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">发布评教活动</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">活动标题 <span class="text-danger">*</span></label>
+                        <input type="text" id="activityTitle" class="form-control" placeholder="请输入活动标题">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">活动说明</label>
+                        <textarea id="activityDesc" class="form-control" rows="2" placeholder="请输入活动说明"></textarea>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">开始时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" id="activityStartTime" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">结束时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" id="activityEndTime" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0">评价维度 <span class="text-danger">*</span></label>
+                            <button class="btn btn-sm btn-outline-primary" onclick="addDimensionRow()">
+                                <i class="bi bi-plus"></i> 添加维度
+                            </button>
+                        </div>
+                        <div id="dimensionRows" class="space-y-2"></div>
+                        <div class="text-end small text-muted mt-2">
+                            权重合计：<span id="totalWeight" class="fw-bold">0</span>%
+                            <span id="weightHint" class="text-danger ms-2"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">参评班级 <span class="text-danger">*</span></label>
+                        <div id="classCheckboxes" class="row g-2" style="max-height: 150px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">参评教师 <span class="text-danger">*</span></label>
+                        <div id="teacherCheckboxes" class="row g-2" style="max-height: 150px; overflow-y: auto;">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="submitActivity()">发布活动</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="resultModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="resultModalTitle">评教结果</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="resultModalBody">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="detailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="detailModalTitle">活动详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detailModalBody">
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-danger" id="endActivityBtn" onclick="endActivity()">结束活动</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+
+        let currentTab = 'activities';
+        let activities = [];
+        let allClasses = [];
+        let allTeachers = [];
+        let currentActivityId = null;
+        let dimensionCount = 0;
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+
+            document.getElementById('activities-view').classList.add('d-none');
+            document.getElementById('myResult-view').classList.add('d-none');
+            document.getElementById('ranking-view').classList.add('d-none');
+            document.getElementById(tab + '-view').classList.remove('d-none');
+
+            if (tab === 'myResult') {
+                loadActivitySelects();
+            } else if (tab === 'ranking') {
+                loadActivitySelects();
+            }
+        }
+
+        async function loadActivities() {
+            try {
+                activities = await api.request('/evaluation/activity/list');
+                renderActivities();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderActivities() {
+            const list = document.getElementById('activityList');
+            if (!activities || activities.length === 0) {
+                list.innerHTML = '<div class="empty-state"><i class="bi bi-inbox fs-1 mb-3 d-block"></i><p>暂无评教活动</p></div>';
+                return;
+            }
+
+            list.innerHTML = activities.map(act => {
+                const isOngoing = act.status === 'ongoing';
+                const statusClass = isOngoing ? 'status-ongoing' : 'status-ended';
+                const statusText = isOngoing ? '进行中' : '已结束';
+                const startTime = new Date(act.startTime).toLocaleString('zh-CN');
+                const endTime = new Date(act.endTime).toLocaleString('zh-CN');
+
+                return `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card activity-card p-3" onclick="showActivityDetail(${act.id})">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold mb-0">${act.title}</h6>
+                                <span class="badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <p class="text-muted small mb-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                ${act.description || '暂无描述'}
+                            </p>
+                            <div class="text-muted small">
+                                <i class="bi bi-calendar3 me-1"></i>${startTime} ~ ${endTime}
+                            </div>
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-grow-1" 
+                                    onclick="event.stopPropagation(); viewActivityResult(${act.id})">
+                                    <i class="bi bi-bar-chart"></i> 查看结果
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary flex-grow-1" 
+                                    onclick="event.stopPropagation(); showActivityDetail(${act.id})">
+                                    <i class="bi bi-info-circle"></i> 详情
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadActivitySelects() {
+            try {
+                const data = await api.request('/evaluation/activity/list');
+                const endedActivities = data.filter(a => a.status === 'ended');
+
+                const mySelect = document.getElementById('myResultActivitySelect');
+                const rankSelect = document.getElementById('rankingActivitySelect');
+
+                const options = endedActivities.map(a => `<option value="${a.id}">${a.title}</option>`).join('');
+                mySelect.innerHTML = '<option value="">请选择评教活动</option>' + options;
+                rankSelect.innerHTML = '<option value="">请选择评教活动</option>' + options;
+
+                if (data.length > 0) {
+                    const firstEnded = endedActivities[0];
+                    if (firstEnded) {
+                        mySelect.value = firstEnded.id;
+                        rankSelect.value = firstEnded.id;
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadMyResult() {
+            const activityId = document.getElementById('myResultActivitySelect').value;
+            const content = document.getElementById('myResultContent');
+
+            if (!activityId) {
+                content.innerHTML = '<div class="empty-state"><p>请选择评教活动</p></div>';
+                return;
+            }
+
+            const teacherId = session.user.tid;
+
+            try {
+                const result = await api.request(`/evaluation/teacher/result?activityId=${activityId}&teacherId=${teacherId}`);
+                content.innerHTML = renderResultContent(result);
+            } catch (e) {
+                console.error(e);
+                content.innerHTML = '<div class="text-center text-danger">加载失败</div>';
+            }
+        }
+
+        async function loadRanking() {
+            const activityId = document.getElementById('rankingActivitySelect').value;
+            const content = document.getElementById('rankingContent');
+
+            if (!activityId) {
+                content.innerHTML = '<div class="empty-state"><p>请选择评教活动</p></div>';
+                return;
+            }
+
+            try {
+                const ranking = await api.request(`/evaluation/admin/ranking?activityId=${activityId}`);
+
+                if (!ranking || ranking.length === 0) {
+                    content.innerHTML = '<div class="empty-state"><p>暂无排行数据</p></div>';
+                    return;
+                }
+
+                content.innerHTML = `
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">排名</th>
+                                <th>教师</th>
+                                <th>综合得分</th>
+                                <th>参评人数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${ranking.map(item => {
+                                const rank = item.rank;
+                                let rankHtml = `<span class="rank-badge rank-${rank}">${rank}</span>`;
+                                if (rank > 3) {
+                                    rankHtml = `<span class="badge bg-light text-dark">${rank}</span>`;
+                                }
+                                const score = item.overallScore || 0;
+                                return `
+                                    <tr>
+                                        <td>${rankHtml}</td>
+                                        <td>${item.teacherName}</td>
+                                        <td><span class="fw-bold text-primary">${score}</span> 分</td>
+                                        <td>${item.evaluateCount} 人</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                console.error(e);
+                content.innerHTML = '<div class="text-center text-danger">加载失败</div>';
+            }
+        }
+
+        function renderResultContent(result) {
+            if (!result || result.evaluateCount === 0) {
+                return '<div class="empty-state"><p>暂无评价数据</p></div>';
+            }
+
+            const overallScore = result.overallScore || 0;
+            const dimensionStats = result.dimensionStats || [];
+            const comments = result.comments || [];
+
+            return `
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="card stat-card p-4 text-center">
+                            <div class="display-4 fw-bold text-primary mb-1">${overallScore}</div>
+                            <div class="text-muted small">综合得分</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card p-4 text-center" style="border-left-color: #198754;">
+                            <div class="display-4 fw-bold text-success mb-1">${result.evaluateCount}</div>
+                            <div class="text-muted small">参评人数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card p-4 text-center" style="border-left-color: #ffc107;">
+                            <div class="display-4 fw-bold text-warning mb-1">${dimensionStats.length}</div>
+                            <div class="text-muted small">评价维度</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold mb-3">各维度得分</h6>
+                <div class="mb-4">
+                    ${dimensionStats.map(d => `
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>${d.dimensionName}</span>
+                                <span class="fw-bold">${d.avgScore} 分 <span class="text-muted small fw-normal">(${d.weight}%)</span></span>
+                            </div>
+                            <div class="score-bar">
+                                <div class="score-bar-fill" style="width: ${(d.avgScore / 5 * 100)}%"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <h6 class="fw-bold mb-3">学生评语 (${comments.length}条)</h6>
+                <div class="comments-list">
+                    ${comments.map(c => `
+                        <div class="comment-item">
+                            <i class="bi bi-quote text-muted me-1"></i>
+                            ${c}
+                        </div>
+                    `).join('') || '<p class="text-muted text-center">暂无评语</p>'}
+                </div>
+            `;
+        }
+
+        async function viewActivityResult(activityId) {
+            currentActivityId = activityId;
+            const teacherId = session.user.tid;
+
+            try {
+                const result = await api.request(`/evaluation/teacher/result?activityId=${activityId}&teacherId=${teacherId}`);
+                document.getElementById('resultModalTitle').textContent = '我的评教结果';
+                document.getElementById('resultModalBody').innerHTML = renderResultContent(result);
+                new bootstrap.Modal(document.getElementById('resultModal')).show();
+            } catch (e) {
+                api.showToast('加载失败', 'danger');
+            }
+        }
+
+        async function showActivityDetail(activityId) {
+            currentActivityId = activityId;
+            try {
+                const detail = await api.request(`/evaluation/activity/detail?id=${activityId}`);
+                const activity = detail.activity;
+                const dimensions = detail.dimensions || [];
+                const classIds = detail.classIds || [];
+                const teachers = detail.teachers || [];
+
+                document.getElementById('detailModalTitle').textContent = activity.title;
+
+                const endBtn = document.getElementById('endActivityBtn');
+                if (activity.status === 'ongoing') {
+                    endBtn.style.display = '';
+                } else {
+                    endBtn.style.display = 'none';
+                }
+
+                document.getElementById('detailModalBody').innerHTML = `
+                    <div class="mb-3">
+                        <label class="text-muted small">活动说明</label>
+                        <p>${activity.description || '暂无描述'}</p>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">开始时间</label>
+                            <p>${new Date(activity.startTime).toLocaleString('zh-CN')}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">结束时间</label>
+                            <p>${new Date(activity.endTime).toLocaleString('zh-CN')}</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">评价维度</label>
+                        <div class="mt-1">
+                            ${dimensions.map(d => `<span class="dimension-tag">${d.name} (${d.weight}%)</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">参评班级 (${classIds.length}个)</label>
+                        <p class="mt-1">共 ${classIds.length} 个班级</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">参评教师 (${teachers.length}位)</label>
+                        <p class="mt-1">${teachers.map(t => t.teacherName).join('、')}</p>
+                    </div>
+                `;
+
+                new bootstrap.Modal(document.getElementById('detailModal')).show();
+            } catch (e) {
+                api.showToast('加载失败', 'danger');
+            }
+        }
+
+        async function showCreateModal() {
+            dimensionCount = 0;
+            document.getElementById('dimensionRows').innerHTML = '';
+            addDimensionRow('教学态度', 25);
+            addDimensionRow('内容质量', 35);
+            addDimensionRow('答疑及时性', 20);
+            addDimensionRow('课堂互动', 20);
+
+            await loadClasses();
+            await loadTeachers();
+
+            const now = new Date();
+            const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            document.getElementById('activityStartTime').value = now.toISOString().slice(0, 16);
+            document.getElementById('activityEndTime').value = nextWeek.toISOString().slice(0, 16);
+
+            document.getElementById('activityTitle').value = '';
+            document.getElementById('activityDesc').value = '';
+
+            new bootstrap.Modal(document.getElementById('createModal')).show();
+        }
+
+        async function loadClasses() {
+            try {
+                allClasses = await api.request('/classes/list');
+                const container = document.getElementById('classCheckboxes');
+                container.innerHTML = allClasses.map(c => `
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="${c.cid}" id="class-${c.cid}">
+                            <label class="form-check-label small" for="class-${c.cid}">${c.cname}</label>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadTeachers() {
+            try {
+                allTeachers = await api.request('/teacher/list');
+                const container = document.getElementById('teacherCheckboxes');
+                container.innerHTML = allTeachers.map(t => `
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="${t.tid}" id="teacher-${t.tid}">
+                            <label class="form-check-label small" for="teacher-${t.tid}">${t.tname}</label>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function addDimensionRow(name = '', weight = '') {
+            dimensionCount++;
+            const row = document.createElement('div');
+            row.className = 'd-flex gap-2 mb-2 align-items-center';
+            row.id = `dim-row-${dimensionCount}`;
+            row.innerHTML = `
+                <input type="text" class="form-control flex-grow-1" placeholder="维度名称" value="${name}" oninput="updateTotalWeight()">
+                <div class="input-group" style="width: 140px;">
+                    <input type="number" class="form-control" placeholder="权重" min="1" max="100" value="${weight}" oninput="updateTotalWeight()">
+                    <span class="input-group-text">%</span>
+                </div>
+                <button class="btn btn-outline-danger btn-sm" onclick="removeDimension(${dimensionCount})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            document.getElementById('dimensionRows').appendChild(row);
+            updateTotalWeight();
+        }
+
+        function removeDimension(id) {
+            const row = document.getElementById(`dim-row-${id}`);
+            if (row) {
+                row.remove();
+                updateTotalWeight();
+            }
+        }
+
+        function updateTotalWeight() {
+            const rows = document.querySelectorAll('#dimensionRows > div');
+            let total = 0;
+            rows.forEach(row => {
+                const weightInput = row.querySelector('input[type="number"]');
+                const val = parseFloat(weightInput.value) || 0;
+                total += val;
+            });
+
+            document.getElementById('totalWeight').textContent = total;
+
+            const hint = document.getElementById('weightHint');
+            if (total === 100) {
+                hint.textContent = '✓ 权重合法';
+                hint.className = 'text-success ms-2';
+            } else if (total > 100) {
+                hint.textContent = '权重超过100%';
+                hint.className = 'text-danger ms-2';
+            } else {
+                hint.textContent = `还差 ${(100 - total).toFixed(0)}%`;
+                hint.className = 'text-warning ms-2';
+            }
+        }
+
+        async function submitActivity() {
+            const title = document.getElementById('activityTitle').value.trim();
+            const description = document.getElementById('activityDesc').value.trim();
+            const startTime = document.getElementById('activityStartTime').value;
+            const endTime = document.getElementById('activityEndTime').value;
+
+            if (!title) {
+                api.showToast('请输入活动标题', 'warning');
+                return;
+            }
+            if (!startTime || !endTime) {
+                api.showToast('请设置评教时间', 'warning');
+                return;
+            }
+
+            const rows = document.querySelectorAll('#dimensionRows > div');
+            const dimensions = [];
+            let totalWeight = 0;
+
+            for (let row of rows) {
+                const nameInput = row.querySelector('input[type="text"]');
+                const weightInput = row.querySelector('input[type="number"]');
+                const name = nameInput.value.trim();
+                const weight = parseFloat(weightInput.value) || 0;
+
+                if (!name || weight <= 0) {
+                    api.showToast('请完善所有维度信息', 'warning');
+                    return;
+                }
+
+                dimensions.push({ name, weight });
+                totalWeight += weight;
+            }
+
+            if (Math.abs(totalWeight - 100) > 0.01) {
+                api.showToast('维度权重之和必须等于100%', 'warning');
+                return;
+            }
+
+            const classIds = Array.from(document.querySelectorAll('#classCheckboxes input:checked'))
+                .map(cb => parseInt(cb.value));
+            const teacherIds = Array.from(document.querySelectorAll('#teacherCheckboxes input:checked'))
+                .map(cb => parseInt(cb.value));
+
+            if (classIds.length === 0) {
+                api.showToast('请至少选择一个参评班级', 'warning');
+                return;
+            }
+            if (teacherIds.length === 0) {
+                api.showToast('请至少选择一位参评教师', 'warning');
+                return;
+            }
+
+            try {
+                await api.request('/evaluation/activity/create', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        startTime,
+                        endTime,
+                        creatorId: session.user.tid,
+                        dimensions,
+                        classIds,
+                        teacherIds
+                    })
+                });
+
+                api.showToast('活动发布成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+                loadActivities();
+            } catch (e) {
+                const err = await e.json().catch(() => ({}));
+                api.showToast(err.message || '发布失败', 'danger');
+            }
+        }
+
+        async function endActivity() {
+            if (!confirm('确定要结束该评教活动吗？结束后将无法再提交评价。')) {
+                return;
+            }
+
+            try {
+                await api.request(`/evaluation/activity/end?id=${currentActivityId}`, {
+                    method: 'POST'
+                });
+
+                api.showToast('活动已结束', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
+                loadActivities();
+            } catch (e) {
+                api.showToast('操作失败', 'danger');
+            }
+        }
+
+        loadActivities();
+    </script>
+</body>
+
+</html>
