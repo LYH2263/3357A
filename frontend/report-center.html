@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教学数据分析报表中心 - SchoolSystemC02</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        .sidebar { width: 250px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+        .main-content { margin-left: 250px; padding: 2rem; }
+        .nav-link { border-radius: 0.5rem; margin: 0.2rem 0; padding: 0.8rem 1rem; color: #333; }
+        .nav-link:hover, .nav-link.active { background: #f0f4ff; color: var(--primary-color); }
+        .nav-link i { margin-right: 10px; }
+        .metric-card {
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, #f8f9ff 100%);
+            border: 1px solid #e3e6f0;
+            transition: all 0.3s;
+        }
+        .metric-card:hover { transform: translateY(-2px); box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.1); }
+        .metric-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; margin-bottom: 0.75rem;
+        }
+        .metric-value { font-size: 2rem; font-weight: 700; color: #222; }
+        .metric-label { font-size: 0.85rem; color: #888; }
+        .chart-card {
+            border-radius: 0.75rem;
+            background: #fff;
+            border: 1px solid #e3e6f0;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+            margin-bottom: 1.5rem;
+        }
+        .chart-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chart-title { font-weight: 600; font-size: 1rem; color: #333; margin: 0; }
+        .chart-body { padding: 1rem; min-height: 320px; }
+        .chart-empty {
+            height: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+        }
+        .chart-empty i { font-size: 3rem; margin-bottom: 0.75rem; opacity: 0.5; }
+        .filter-card {
+            border-radius: 0.75rem;
+            background: #fff;
+            border: 1px solid #e3e6f0;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .sampling-note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 0.75rem 1rem;
+            border-radius: 0 0.375rem 0.375rem 0;
+            font-size: 0.875rem;
+            color: #856404;
+            margin-bottom: 1rem;
+        }
+        .btn-icon { padding: 0.35rem 0.65rem; font-size: 0.85rem; }
+        .multi-select-wrapper { position: relative; }
+        .multi-select-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: #fff; border: 1px solid #dee2e6;
+            border-radius: 0.375rem; max-height: 240px; overflow-y: auto;
+            z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .multi-select-dropdown.show { display: block; }
+        .multi-select-item { padding: 0.5rem 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
+        .multi-select-item:hover { background: #f0f4ff; }
+        .badge-filter {
+            display: inline-flex; align-items: center; gap: 0.25rem;
+            background: #e9ecef; padding: 0.2rem 0.5rem; border-radius: 0.5rem;
+            font-size: 0.8rem; margin: 0.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="teacher.html" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="evaluation-manage.html" class="nav-link"><i class="bi bi-star-half"></i>教师评教</a></li>
+            <li><a href="calendar-manage.html" class="nav-link"><i class="bi bi-calendar3"></i>教学日历</a></li>
+            <li><a href="repository-manage.html" class="nav-link"><i class="bi bi-folder-symlink"></i>教学资料库</a></li>
+            <li><a href="album-manage.html" class="nav-link"><i class="bi bi-images"></i>班级相册</a></li>
+            <li><a href="#" class="nav-link active"><i class="bi bi-graph-up-arrow"></i>数据分析报表</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <h4 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow text-primary"></i> 教学数据分析报表中心</h4>
+            <div>
+                <button class="btn btn-outline-primary btn-icon" data-bs-toggle="modal" data-bs-target="#saveReportModal">
+                    <i class="bi bi-bookmark-plus"></i> 保存为我的报表
+                </button>
+                <button class="btn btn-outline-secondary btn-icon ms-1" data-bs-toggle="modal" data-bs-target="#myReportsModal">
+                    <i class="bi bi-collection"></i> 我的报表
+                </button>
+            </div>
+        </div>
+
+        <div class="filter-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">开始日期</label>
+                    <input type="date" id="startDate" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">结束日期</label>
+                    <input type="date" id="endDate" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">班级范围</label>
+                    <div class="multi-select-wrapper">
+                        <button type="button" class="form-control text-start" id="classSelectBtn" onclick="toggleClassDropdown()">
+                            <span id="classSelectLabel">全部班级</span>
+                            <i class="bi bi-chevron-down float-end mt-1"></i>
+                        </button>
+                        <div class="multi-select-dropdown" id="classDropdown">
+                            <div class="multi-select-item" onclick="toggleAllClasses()">
+                                <input type="checkbox" id="classAll" onchange="toggleAllClasses()">
+                                <label class="mb-0 flex-grow-1" for="classAll">全部班级</label>
+                            </div>
+                            <div id="classListContainer"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="bi bi-funnel"></i> 生成报表
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="samplingNoteArea"></div>
+
+        <div class="row g-3 mb-4" id="metricCards"></div>
+
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="chart-card" id="card-audit">
+                    <div class="chart-header">
+                        <h5 class="chart-title"><i class="bi bi-shield-check text-primary"></i> 学生审核状态构成</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportChartImage('chart-audit', '学生审核状态构成')">
+                                <i class="bi bi-image"></i> 图片
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportCsv('audit')">
+                                <i class="bi bi-filetype-csv"></i> 表格
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-body"><div id="chart-audit" style="width:100%;height:320px"></div></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-card" id="card-class">
+                    <div class="chart-header">
+                        <h5 class="chart-title"><i class="bi bi-bar-chart text-success"></i> 各班级人数与优秀比例对比</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportChartImage('chart-class', '各班级人数与优秀比例')">
+                                <i class="bi bi-image"></i> 图片
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportCsv('class')">
+                                <i class="bi bi-filetype-csv"></i> 表格
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-body"><div id="chart-class" style="width:100%;height:320px"></div></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-card" id="card-interaction">
+                    <div class="chart-header">
+                        <h5 class="chart-title"><i class="bi bi-chat-dots text-info"></i> 互动提问趋势</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportChartImage('chart-interaction', '互动提问趋势')">
+                                <i class="bi bi-image"></i> 图片
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportCsv('interaction')">
+                                <i class="bi bi-filetype-csv"></i> 表格
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-body"><div id="chart-interaction" style="width:100%;height:320px"></div></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-card" id="card-content">
+                    <div class="chart-header">
+                        <h5 class="chart-title"><i class="bi bi-folder2-open text-warning"></i> 教学内容与实验附件覆盖</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportChartImage('chart-content', '教学内容与实验附件覆盖')">
+                                <i class="bi bi-image"></i> 图片
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportCsv('content')">
+                                <i class="bi bi-filetype-csv"></i> 表格
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-body"><div id="chart-content" style="width:100%;height:320px"></div></div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="chart-card" id="card-news">
+                    <div class="chart-header">
+                        <h5 class="chart-title"><i class="bi bi-newspaper text-secondary"></i> 技术动态发布趋势</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportChartImage('chart-news', '技术动态发布趋势')">
+                                <i class="bi bi-image"></i> 图片
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" onclick="exportCsv('news')">
+                                <i class="bi bi-filetype-csv"></i> 表格
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-body"><div id="chart-news" style="width:100%;height:320px"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="saveReportModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">保存为我的报表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">报表名称</label>
+                        <input type="text" id="reportNameInput" class="form-control" placeholder="例如：本学期教学数据概览">
+                    </div>
+                    <div class="text-muted small">
+                        将保存当前的时间范围与班级筛选条件，便于下次一键加载。
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveMyReport()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="myReportsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">我的报表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="myReportsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+
+        let charts = {};
+        let currentData = null;
+        let currentFilter = { startDate: null, endDate: null, classIds: [] };
+        let allClasses = [];
+        let selectedClassIds = new Set();
+
+        function initDates() {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - 29);
+            document.getElementById('startDate').value = formatDate(start);
+            document.getElementById('endDate').value = formatDate(end);
+            currentFilter.startDate = formatDate(start);
+            currentFilter.endDate = formatDate(end);
+        }
+
+        function formatDate(d) {
+            return d.toISOString().split('T')[0];
+        }
+
+        async function loadClasses() {
+            try {
+                allClasses = await api.request('/classes/list');
+                const container = document.getElementById('classListContainer');
+                container.innerHTML = allClasses.map(c => `
+                    <div class="multi-select-item" onclick="toggleClass(${c.cid}, event)">
+                        <input type="checkbox" class="class-checkbox" data-cid="${c.cid}" id="class-${c.cid}">
+                        <label class="mb-0 flex-grow-1" for="class-${c.cid}">${c.cname}</label>
+                    </div>
+                `).join('');
+            } catch (e) {}
+        }
+
+        function toggleClassDropdown() {
+            document.getElementById('classDropdown').classList.toggle('show');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.multi-select-wrapper')) {
+                document.getElementById('classDropdown').classList.remove('show');
+            }
+        });
+
+        function toggleClass(cid, evt) {
+            if (evt) evt.stopPropagation();
+            const cb = document.getElementById(`class-${cid}`);
+            if (cb) cb.checked = !cb.checked;
+            if (selectedClassIds.has(cid)) selectedClassIds.delete(cid);
+            else selectedClassIds.add(cid);
+            updateClassSelectLabel();
+            updateAllCheckbox();
+        }
+
+        function toggleAllClasses() {
+            const allCb = document.getElementById('classAll');
+            const checked = allCb.checked;
+            document.querySelectorAll('.class-checkbox').forEach(cb => { cb.checked = checked; });
+            if (checked) {
+                allClasses.forEach(c => selectedClassIds.add(c.cid));
+            } else {
+                selectedClassIds.clear();
+            }
+            updateClassSelectLabel();
+        }
+
+        function updateAllCheckbox() {
+            document.getElementById('classAll').checked = selectedClassIds.size === allClasses.length;
+        }
+
+        function updateClassSelectLabel() {
+            const label = document.getElementById('classSelectLabel');
+            if (selectedClassIds.size === 0 || selectedClassIds.size === allClasses.length) {
+                label.textContent = '全部班级';
+            } else {
+                label.textContent = `已选 ${selectedClassIds.size} 个班级`;
+            }
+        }
+
+        function applyFilters() {
+            currentFilter.startDate = document.getElementById('startDate').value;
+            currentFilter.endDate = document.getElementById('endDate').value;
+            currentFilter.classIds = Array.from(selectedClassIds);
+            currentFilter.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (!currentFilter.startDate || !currentFilter.endDate) {
+                api.showToast('请选择起止日期', 'danger');
+                return;
+            }
+            if (currentFilter.startDate > currentFilter.endDate) {
+                api.showToast('开始日期不能晚于结束日期', 'danger');
+                return;
+            }
+            loadDashboard();
+        }
+
+        async function loadDashboard() {
+            showLoading();
+            try {
+                const body = {};
+                if (currentFilter.startDate) body.startDate = currentFilter.startDate;
+                if (currentFilter.endDate) body.endDate = currentFilter.endDate;
+                if (currentFilter.classIds && currentFilter.classIds.length > 0) body.classIds = currentFilter.classIds;
+                if (currentFilter.timezone) body.timezone = currentFilter.timezone;
+
+                currentData = await api.request('/report/dashboard', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                renderAll(currentData);
+            } catch (e) {
+                api.showToast('加载报表失败', 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('metricCards').innerHTML = Array(6).fill(0).map(() => `
+                <div class="col-md-6 col-lg-4 col-xl-2">
+                    <div class="metric-card">
+                        <div class="skeleton metric-icon"></div>
+                        <div class="skeleton metric-value" style="height:2rem;width:60%;border-radius:0.5rem"></div>
+                        <div class="skeleton metric-label mt-2" style="height:1rem;width:80%;border-radius:0.3rem"></div>
+                    </div>
+                </div>
+            `).join('');
+            ['chart-audit', 'chart-class', 'chart-interaction', 'chart-content', 'chart-news'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = `<div class="chart-empty"><div class="spinner-border text-primary"></div><div class="mt-2">正在加载数据...</div></div>`;
+            });
+        }
+
+        function hideLoading() {}
+
+        function renderAll(data) {
+            renderSamplingNote(data.samplingNote);
+            renderMetricCards(data);
+            renderAuditChart(data.studentStats);
+            renderClassChart(data.studentStats);
+            renderInteractionChart(data.interactionStats);
+            renderContentChart(data.contentStats);
+            renderNewsChart(data.newsStats);
+        }
+
+        function renderSamplingNote(note) {
+            const area = document.getElementById('samplingNoteArea');
+            if (note) {
+                area.innerHTML = `<div class="sampling-note"><i class="bi bi-info-circle"></i> ${note}</div>`;
+            } else {
+                area.innerHTML = '';
+            }
+        }
+
+        function renderMetricCards(data) {
+            const ss = data.studentStats || {};
+            const ins = data.interactionStats || {};
+            const cs = data.contentStats || {};
+            const ns = data.newsStats || {};
+
+            const cards = [
+                { label: '学生总数', value: ss.totalCount || 0, icon: 'bi-people', color: '#4e73df', bg: '#eef2ff' },
+                { label: '已审核通过', value: ss.approvedCount || 0, icon: 'bi-shield-check', color: '#1cc88a', bg: '#e6f9f2' },
+                { label: '待审核', value: ss.pendingCount || 0, icon: 'bi-clock', color: '#f6c23e', bg: '#fff8e1' },
+                { label: '互动回复率', value: (ins.replyRate || 0) + '%', icon: 'bi-chat-dots', color: '#36b9cc', bg: '#e0f7fa' },
+                { label: '平均响应(分钟)', value: ins.avgResponseMinutes || 0, icon: 'bi-hourglass-split', color: '#e74a3b', bg: '#fdecea' },
+                { label: '技术动态发布', value: ns.totalCount || 0, icon: 'bi-newspaper', color: '#858796', bg: '#f0f0f3' }
+            ];
+
+            document.getElementById('metricCards').innerHTML = cards.map(c => `
+                <div class="col-md-6 col-lg-4 col-xl-2">
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background:${c.bg};color:${c.color}">
+                            <i class="bi ${c.icon}"></i>
+                        </div>
+                        <div class="metric-value">${c.value}</div>
+                        <div class="metric-label">${c.label}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getChart(id) {
+            if (!charts[id]) {
+                const dom = document.getElementById(id);
+                if (dom) charts[id] = echarts.init(dom);
+            }
+            return charts[id];
+        }
+
+        function renderEmpty(id) {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = `<div class="chart-empty"><i class="bi bi-inbox"></i><div>暂无数据</div></div>`;
+            if (charts[id]) { charts[id].dispose(); charts[id] = null; }
+        }
+
+        function renderAuditChart(ss) {
+            const dist = ss && ss.auditStatusDistribution ? ss.auditStatusDistribution : [];
+            if (dist.length === 0) { renderEmpty('chart-audit'); return; }
+            const chart = getChart('chart-audit');
+            const colorMap = { '已通过': '#1cc88a', '待审核': '#f6c23e', '已拒绝': '#e74a3b' };
+            chart.setOption({
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { bottom: 0 },
+                series: [{
+                    type: 'pie',
+                    radius: ['40%', '65%'],
+                    center: ['50%', '45%'],
+                    avoidLabelOverlap: true,
+                    itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+                    label: { formatter: '{b}\n{d}%' },
+                    data: dist.map(d => ({
+                        name: d.name,
+                        value: d.value,
+                        itemStyle: { color: colorMap[d.name] || '#4e73df' }
+                    }))
+                }]
+            });
+        }
+
+        function renderClassChart(ss) {
+            const list = ss && ss.classStudentList ? ss.classStudentList : [];
+            if (list.length === 0) { renderEmpty('chart-class'); return; }
+            const chart = getChart('chart-class');
+            chart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                legend: { data: ['学生人数', '优秀率(%)'], bottom: 0 },
+                grid: { left: 50, right: 50, top: 20, bottom: 60, containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: list.map(i => i.className),
+                    axisLabel: { rotate: 30, interval: 0, fontSize: 10 }
+                },
+                yAxis: [
+                    { type: 'value', name: '人数' },
+                    { type: 'value', name: '优秀率(%)', max: 100 }
+                ],
+                series: [
+                    {
+                        name: '学生人数', type: 'bar',
+                        data: list.map(i => i.studentCount),
+                        itemStyle: { color: '#4e73df', borderRadius: [4, 4, 0, 0] },
+                        barMaxWidth: 30
+                    },
+                    {
+                        name: '优秀率(%)', type: 'line',
+                        yAxisIndex: 1, smooth: true,
+                        data: list.map(i => i.excellentRate),
+                        itemStyle: { color: '#1cc88a' },
+                        lineStyle: { width: 3 },
+                        symbol: 'circle', symbolSize: 8
+                    }
+                ]
+            });
+        }
+
+        function renderInteractionChart(ins) {
+            const trend = ins && ins.dailyTrend ? ins.dailyTrend : [];
+            if (trend.length === 0) { renderEmpty('chart-interaction'); return; }
+            const chart = getChart('chart-interaction');
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['提问数', '回复数'], bottom: 0 },
+                grid: { left: 40, right: 20, top: 20, bottom: 60, containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: trend.map(t => t.date),
+                    axisLabel: { rotate: 30, fontSize: 10 }
+                },
+                yAxis: { type: 'value' },
+                series: [
+                    {
+                        name: '提问数', type: 'line', smooth: true,
+                        data: trend.map(t => t.questionCount),
+                        itemStyle: { color: '#36b9cc' },
+                        areaStyle: { opacity: 0.2 },
+                        symbol: 'circle', symbolSize: 6
+                    },
+                    {
+                        name: '回复数', type: 'line', smooth: true,
+                        data: trend.map(t => t.replyCount),
+                        itemStyle: { color: '#1cc88a' },
+                        areaStyle: { opacity: 0.2 },
+                        symbol: 'circle', symbolSize: 6
+                    }
+                ]
+            });
+        }
+
+        function renderContentChart(cs) {
+            if (!cs) { renderEmpty('chart-content'); return; }
+            const chart = getChart('chart-content');
+            chart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                legend: { data: ['总数', '带附件数', '附件覆盖率(%)'], bottom: 0 },
+                grid: { left: 50, right: 50, top: 20, bottom: 60, containLabel: true },
+                xAxis: { type: 'category', data: ['教学内容', '实验内容'] },
+                yAxis: [
+                    { type: 'value', name: '数量' },
+                    { type: 'value', name: '覆盖率(%)', max: 100 }
+                ],
+                series: [
+                    {
+                        name: '总数', type: 'bar', stack: 'total',
+                        data: [cs.courseCount || 0, cs.experimentCount || 0],
+                        itemStyle: { color: '#858796', borderRadius: [0, 0, 0, 0] },
+                        barMaxWidth: 60
+                    },
+                    {
+                        name: '带附件数', type: 'bar', stack: 'total',
+                        data: [
+                            (cs.courseCount || 0) - (cs.courseWithFileCount || 0),
+                            (cs.experimentCount || 0) - (cs.experimentWithFileCount || 0)
+                        ],
+                        itemStyle: { color: '#4e73df', borderRadius: [4, 4, 0, 0] }
+                    },
+                    {
+                        name: '附件覆盖率(%)', type: 'line',
+                        yAxisIndex: 1,
+                        data: [cs.courseFileCoverage || 0, cs.experimentFileCoverage || 0],
+                        itemStyle: { color: '#f6c23e' },
+                        lineStyle: { width: 3 },
+                        symbol: 'circle', symbolSize: 10,
+                        label: { show: true, formatter: '{c}%', position: 'top' }
+                    }
+                ]
+            });
+        }
+
+        function renderNewsChart(ns) {
+            const trend = ns && ns.dailyTrend ? ns.dailyTrend : [];
+            if (trend.length === 0) { renderEmpty('chart-news'); return; }
+            const chart = getChart('chart-news');
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: 40, right: 20, top: 20, bottom: 60, containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: trend.map(t => t.date),
+                    axisLabel: { rotate: 30, fontSize: 10 }
+                },
+                yAxis: { type: 'value' },
+                series: [{
+                    name: '发布数量', type: 'bar',
+                    data: trend.map(t => t.count),
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#83bff6' },
+                            { offset: 1, color: '#4e73df' }
+                        ]),
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    barMaxWidth: 30
+                }]
+            });
+        }
+
+        function exportChartImage(chartId, filename) {
+            const chart = charts[chartId];
+            if (!chart) {
+                api.showToast('图表暂未生成，无法导出', 'warning');
+                return;
+            }
+            const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}_${Date.now()}.png`;
+            a.click();
+            api.showToast('图片导出成功', 'success');
+        }
+
+        function exportCsv(type) {
+            if (!currentData) {
+                api.showToast('暂无数据可导出', 'warning');
+                return;
+            }
+            let headers = [], rows = [];
+            if (type === 'audit') {
+                headers = ['审核状态', '人数', '占比(%)'];
+                const dist = currentData.studentStats?.auditStatusDistribution || [];
+                const total = dist.reduce((s, d) => s + (d.value || 0), 0);
+                rows = dist.map(d => [d.name, d.value, total ? Math.round(d.value * 10000 / total) / 100 : 0]);
+            } else if (type === 'class') {
+                headers = ['班级ID', '班级名称', '学生人数', '优秀人数', '优秀率(%)'];
+                rows = (currentData.studentStats?.classStudentList || []).map(c =>
+                    [c.classId, c.className, c.studentCount, c.excellentCount, c.excellentRate]);
+            } else if (type === 'interaction') {
+                headers = ['日期', '提问数', '回复数'];
+                rows = (currentData.interactionStats?.dailyTrend || []).map(t => [t.date, t.questionCount, t.replyCount]);
+            } else if (type === 'content') {
+                const cs = currentData.contentStats || {};
+                headers = ['类型', '总数', '带附件数', '附件覆盖率(%)'];
+                rows = [
+                    ['教学内容', cs.courseCount, cs.courseWithFileCount, cs.courseFileCoverage],
+                    ['实验内容', cs.experimentCount, cs.experimentWithFileCount, cs.experimentFileCoverage]
+                ];
+            } else if (type === 'news') {
+                headers = ['日期', '发布数量'];
+                rows = (currentData.newsStats?.dailyTrend || []).map(t => [t.date, t.count]);
+            }
+            const filterInfo = `# 筛选条件: 时间 ${currentFilter.startDate} ~ ${currentFilter.endDate}, 班级: ${selectedClassIds.size === allClasses.length ? '全部' : selectedClassIds.size + '个'}\n`;
+            const csv = filterInfo + '\ufeff' + [headers, ...rows].map(r =>
+                r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')
+            ).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `报表_${type}_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            api.showToast('表格导出成功', 'success');
+        }
+
+        async function saveMyReport() {
+            const name = document.getElementById('reportNameInput').value.trim();
+            if (!name) {
+                api.showToast('请输入报表名称', 'danger');
+                return;
+            }
+            try {
+                const res = await api.request('/report/save', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        teacherId: session.user.tid,
+                        reportName: name,
+                        filter: currentFilter
+                    })
+                });
+                if (res.success) {
+                    api.showToast('保存成功', 'success');
+                    document.getElementById('reportNameInput').value = '';
+                    bootstrap.Modal.getInstance(document.getElementById('saveReportModal')).hide();
+                }
+            } catch (e) {}
+        }
+
+        async function loadMyReports() {
+            try {
+                const list = await api.request(`/report/my-reports?teacherId=${session.user.tid}`);
+                const container = document.getElementById('myReportsList');
+                if (list.length === 0) {
+                    container.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-collection fs-1 opacity-50"></i><div class="mt-2">暂无已保存的报表</div></div>`;
+                    return;
+                }
+                container.innerHTML = `<table class="table table-hover align-middle">
+                    <thead><tr><th>报表名称</th><th>创建时间</th><th>最近更新</th><th>操作</th></tr></thead>
+                    <tbody>${list.map(r => `
+                        <tr>
+                            <td class="fw-semibold">${r.reportName}</td>
+                            <td class="text-muted small">${r.createTime?.replace('T', ' ') || '-'}</td>
+                            <td class="text-muted small">${r.updateTime?.replace('T', ' ') || '-'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="applySavedReport(${r.id})">加载</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteSavedReport(${r.id})">删除</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody></table>`;
+            } catch (e) {}
+        }
+
+        async function applySavedReport(id) {
+            try {
+                const filter = await api.request(`/report/load/${id}?teacherId=${session.user.tid}`);
+                currentFilter = filter;
+                if (filter.startDate) document.getElementById('startDate').value = filter.startDate;
+                if (filter.endDate) document.getElementById('endDate').value = filter.endDate;
+                selectedClassIds.clear();
+                if (filter.classIds && filter.classIds.length > 0) {
+                    filter.classIds.forEach(cid => {
+                        selectedClassIds.add(cid);
+                        const cb = document.getElementById(`class-${cid}`);
+                        if (cb) cb.checked = true;
+                    });
+                } else {
+                    allClasses.forEach(c => selectedClassIds.add(c.cid));
+                    document.querySelectorAll('.class-checkbox').forEach(cb => { cb.checked = true; });
+                }
+                updateClassSelectLabel();
+                updateAllCheckbox();
+                bootstrap.Modal.getInstance(document.getElementById('myReportsModal')).hide();
+                loadDashboard();
+                api.showToast('报表已加载', 'success');
+            } catch (e) {}
+        }
+
+        async function deleteSavedReport(id) {
+            if (!confirm('确定删除此报表吗？')) return;
+            try {
+                await api.request(`/report/delete/${id}?teacherId=${session.user.tid}`, { method: 'DELETE' });
+                api.showToast('删除成功', 'success');
+                loadMyReports();
+            } catch (e) {}
+        }
+
+        document.getElementById('myReportsModal').addEventListener('show.bs.modal', loadMyReports);
+        window.addEventListener('resize', () => {
+            Object.values(charts).forEach(c => c && c.resize());
+        });
+
+        initDates();
+        loadClasses().then(() => {
+            allClasses.forEach(c => selectedClassIds.add(c.cid));
+            updateClassSelectLabel();
+            updateAllCheckbox();
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>

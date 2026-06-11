@@ -761,3 +761,15 @@ CREATE TABLE `class_album_like` (
     KEY `idx_user` (`user_id`),
     FOREIGN KEY (`album_id`) REFERENCES `class_album`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='相册点赞表';
+
+-- (29) 已保存的报表配置表
+CREATE TABLE `saved_report` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `report_name` VARCHAR(200) NOT NULL COMMENT '报表名称',
+    `teacher_id` INT NOT NULL COMMENT '教师ID',
+    `filter_json` TEXT COMMENT '筛选配置JSON',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_teacher` (`teacher_id`),
+    FOREIGN KEY (`teacher_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='已保存的报表配置表';
