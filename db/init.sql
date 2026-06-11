@@ -517,3 +517,67 @@ INSERT INTO `evaluation_comment` (`activity_id`, `teacher_id`, `comment`, `anony
 (2, 2, '内容很充实，但希望课后答疑能更及时一些。', 'tok_xyz789uvw012'),
 (2, 1, '课堂氛围很好，老师很有感染力。', 'tok_rst345opq678'),
 (2, 2, '教学内容很有深度，收获很大。', 'tok_mno901jkl234');
+
+-- (18) 教学日历事件表
+CREATE TABLE `calendar_event` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(255) NOT NULL COMMENT '事件标题',
+    `event_type` VARCHAR(50) NOT NULL DEFAULT 'activity' COMMENT '事件类型：exam-考试, lecture-讲座, experiment-实验, activity-活动',
+    `start_time` DATETIME NOT NULL COMMENT '开始时间',
+    `end_time` DATETIME NOT NULL COMMENT '结束时间',
+    `location` VARCHAR(255) DEFAULT NULL COMMENT '地点',
+    `remark` TEXT COMMENT '备注',
+    `creator_id` INT DEFAULT NULL COMMENT '创建人ID(教师)',
+    `creator_name` VARCHAR(50) DEFAULT NULL COMMENT '创建人姓名(冗余)',
+    `is_archived` TINYINT DEFAULT 0 COMMENT '是否归档：0-未归档，1-已归档(过期事件自动归档)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_time` (`start_time`, `end_time`),
+    KEY `idx_type` (`event_type`),
+    KEY `idx_archived` (`is_archived`),
+    KEY `idx_creator` (`creator_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教学日历事件表';
+
+-- (19) 事件-班级关联表
+CREATE TABLE `calendar_event_class` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `event_id` INT NOT NULL COMMENT '事件ID',
+    `class_id` INT NOT NULL COMMENT '班级ID',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_event_class` (`event_id`, `class_id`),
+    FOREIGN KEY (`event_id`) REFERENCES `calendar_event`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教学日历事件班级关联表';
+
+-- Seeding calendar event data
+INSERT INTO `calendar_event` (`title`, `event_type`, `start_time`, `end_time`, `location`, `remark`, `creator_id`, `creator_name`, `is_archived`) VALUES
+('Java程序设计期末考试', 'exam', '2026-06-20 09:00:00', '2026-06-20 11:00:00', '教学楼A-301', '闭卷考试，请携带学生证', 1, '张老师', 0),
+('数据库原理期中考试', 'exam', '2026-06-15 14:00:00', '2026-06-15 16:00:00', '教学楼B-205', '开卷考试', 2, '李老师', 0),
+('人工智能前沿讲座', 'lecture', '2026-06-18 15:00:00', '2026-06-18 17:00:00', '学术报告厅', '特邀清华大学教授主讲', 4, '赵老师', 0),
+('网络安全攻防实验', 'experiment', '2026-06-22 08:30:00', '2026-06-22 12:00:00', '实验楼C-402', '请提前安装Kali Linux', 6, '周老师', 0),
+('班级团建活动', 'activity', '2026-06-25 14:00:00', '2026-06-25 18:00:00', '学校操场', '班级户外团建，请穿着运动装', 5, '孙老师', 0),
+('云计算架构专题讲座', 'lecture', '2026-06-28 10:00:00', '2026-06-28 12:00:00', '教学楼A-501', 'Docker与K8s实战分享', 8, '郑老师', 0),
+('数据结构课程设计答辩', 'exam', '2026-07-01 09:00:00', '2026-07-02 17:00:00', '教学楼B-301', '分组答辩，每组20分钟', 1, '张老师', 0),
+('机器学习实验展示', 'experiment', '2026-07-03 13:30:00', '2026-07-03 16:30:00', '实验楼D-201', '展示训练模型与预测结果', 4, '赵老师', 0),
+('Web开发技术沙龙', 'activity', '2026-07-05 19:00:00', '2026-07-05 21:00:00', '创新实验室', 'React与Vue技术分享交流', 7, '吴老师', 0),
+('计算机网络期末考试', 'exam', '2026-07-08 09:00:00', '2026-07-08 11:30:00', '教学楼A-201', '闭卷考试，范围1-8章', 3, '王老师', 0),
+('操作系统课程实验', 'experiment', '2026-06-10 08:00:00', '2026-06-12 18:00:00', '实验楼C-301', '进程调度模拟实验', 11, '褚老师', 0),
+('数据库设计大赛', 'activity', '2026-06-28 09:00:00', '2026-06-29 18:00:00', '计算机学院', '院级数据库设计竞赛', 2, '李老师', 0),
+('算法竞赛校内选拔', 'exam', '2026-05-20 09:00:00', '2026-05-20 12:00:00', '教学楼A-401', 'ACM校内选拔赛', 1, '张老师', 1),
+('春季读书分享会', 'activity', '2026-05-15 14:00:00', '2026-05-15 17:00:00', '图书馆报告厅', '好书推荐与读后感分享', 5, '孙老师', 1);
+
+INSERT INTO `calendar_event_class` (`event_id`, `class_id`) VALUES
+(1, 1), (1, 2),
+(2, 1), (2, 2),
+(3, 1), (3, 2), (3, 3), (3, 7),
+(4, 5), (4, 9),
+(5, 1),
+(6, 3), (6, 7),
+(7, 1), (7, 2),
+(8, 7),
+(9, 3), (9, 4),
+(10, 5),
+(11, 1), (11, 2),
+(12, 1), (12, 2), (12, 3),
+(13, 1), (13, 2), (13, 3),
+(14, 1), (14, 2);

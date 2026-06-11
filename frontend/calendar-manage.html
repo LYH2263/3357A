@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教学日历管理 - SchoolSystemC02</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .nav-link {
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+            padding: 0.8rem 1rem;
+            color: #333;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: #f0f4ff;
+            color: var(--primary-color);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+
+        .type-badge {
+            font-size: 0.75rem;
+            padding: 0.2em 0.6em;
+            border-radius: 0.375rem;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .type-exam { background: #e74a3b; }
+        .type-lecture { background: #4e73df; }
+        .type-experiment { background: #1cc88a; }
+        .type-activity { background: #f6c23e; color: #333; }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border: 1px solid #e3e6f0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .calendar-header-cell {
+            background: #f8f9fc;
+            padding: 0.6rem 0.4rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #5a5c69;
+            border-bottom: 1px solid #e3e6f0;
+        }
+
+        .calendar-header-cell:not(:last-child) {
+            border-right: 1px solid #e3e6f0;
+        }
+
+        .calendar-day {
+            min-height: 100px;
+            padding: 0.4rem;
+            border-bottom: 1px solid #e3e6f0;
+            border-right: 1px solid #e3e6f0;
+            background: #fff;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .calendar-day:hover {
+            background: #f0f4ff;
+        }
+
+        .calendar-day:nth-child(7n) {
+            border-right: none;
+        }
+
+        .calendar-day.other-month {
+            background: #fafbfc;
+        }
+
+        .calendar-day.other-month .day-number {
+            color: #ccc;
+        }
+
+        .calendar-day.today .day-number {
+            background: var(--primary-color);
+            color: #fff;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .day-number {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #5a5c69;
+            margin-bottom: 2px;
+        }
+
+        .day-events {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .day-event-dot {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.7rem;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: #fff;
+        }
+
+        .day-event-dot.type-exam { background: rgba(231, 74, 59, 0.85); }
+        .day-event-dot.type-lecture { background: rgba(78, 115, 223, 0.85); }
+        .day-event-dot.type-experiment { background: rgba(28, 200, 138, 0.85); }
+        .day-event-dot.type-activity { background: rgba(246, 194, 62, 0.85); color: #333; }
+
+        .day-event-more {
+            font-size: 0.65rem;
+            color: #858796;
+            padding-left: 4px;
+        }
+
+        .calendar-popover {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 50;
+            min-width: 260px;
+            background: #fff;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.12);
+            padding: 0.75rem;
+        }
+
+        .calendar-popover .popover-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #3a3b45;
+        }
+
+        .calendar-popover .popover-event {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid #f1f1f1;
+        }
+
+        .calendar-popover .popover-event:last-child {
+            border-bottom: none;
+        }
+
+        .agenda-date-header {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            padding: 0.5rem 0;
+            border-bottom: 2px solid var(--primary-color);
+            margin-bottom: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .agenda-date-header:first-child {
+            margin-top: 0;
+        }
+
+        .agenda-event-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: #fff;
+            border-radius: 0.5rem;
+            border: 1px solid #e3e6f0;
+            margin-bottom: 0.5rem;
+            transition: box-shadow 0.15s;
+        }
+
+        .agenda-event-card:hover {
+            box-shadow: 0 0.15rem 0.75rem rgba(58, 59, 69, 0.1);
+        }
+
+        .agenda-event-card .event-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .agenda-event-card .event-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #3a3b45;
+        }
+
+        .agenda-event-card .event-meta {
+            font-size: 0.8rem;
+            color: #858796;
+            margin-top: 0.2rem;
+        }
+
+        .agenda-event-card .event-actions {
+            display: flex;
+            gap: 0.3rem;
+            flex-shrink: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #b7b9cc;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .class-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.3rem;
+        }
+
+        .view-toggle .btn {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+        }
+
+        .view-toggle .btn.active {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="#" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="evaluation-manage.html" class="nav-link"><i class="bi bi-star-half"></i>教师评教</a></li>
+            <li><a href="calendar-manage.html" class="nav-link active"><i class="bi bi-calendar3"></i>教学日历</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <h4 class="fw-bold">教学日历管理</h4>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <button class="btn btn-primary btn-sm" onclick="showCreateModal()">
+                    <i class="bi bi-plus-lg"></i> 新建事件
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="archiveExpired()">
+                    <i class="bi bi-archive"></i> 归档过期事件
+                </button>
+                <div class="view-toggle btn-group">
+                    <button class="btn btn-outline-primary btn-sm active" id="btnMonthView" onclick="switchView('month')">
+                        <i class="bi bi-calendar3"></i> 月视图
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" id="btnAgendaView" onclick="switchView('agenda')">
+                        <i class="bi bi-list-ul"></i> 议程列表
+                    </button>
+                </div>
+                <select class="form-select form-select-sm" style="width:auto" id="typeFilter" onchange="loadEvents()">
+                    <option value="">全部类型</option>
+                    <option value="exam">考试</option>
+                    <option value="lecture">讲座</option>
+                    <option value="experiment">实验</option>
+                    <option value="activity">活动</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card p-4" id="calendarCard">
+            <div id="monthView">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navMonth(-1)"><i class="bi bi-chevron-left"></i></button>
+                    <h5 class="mb-0 fw-bold" id="monthLabel"></h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="navMonth(1)"><i class="bi bi-chevron-right"></i></button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+            <div id="agendaView" style="display:none">
+                <div id="agendaList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="eventModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="eventModalTitle">新建事件</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">事件标题 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="f_title" required>
+                            <div class="invalid-feedback">请输入事件标题</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">事件类型</label>
+                            <select class="form-select" id="f_eventType">
+                                <option value="exam">考试</option>
+                                <option value="lecture">讲座</option>
+                                <option value="experiment">实验</option>
+                                <option value="activity">活动</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">开始时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="f_startTime">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">结束时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="f_endTime">
+                            <div class="invalid-feedback" id="endTimeFeedback"></div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">地点</label>
+                            <input type="text" class="form-control" id="f_location">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">备注</label>
+                            <textarea class="form-control" id="f_remark" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">关联班级 <span class="text-danger">*</span></label>
+                            <div class="class-checkbox-grid" id="f_classIds"></div>
+                            <div class="invalid-feedback" id="classFeedback" style="display:none">请至少选择一个班级</div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">创建者</label>
+                            <input type="text" class="form-control" id="f_creatorName" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEvent()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i>
+                    <h5 class="fw-bold">确认删除？</h5>
+                    <p class="text-muted small">此操作不可撤销，请谨慎操作。</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-light flex-grow-1" data-bs-dismiss="modal">取消</button>
+                        <button class="btn btn-danger flex-grow-1" id="confirmDeleteBtn">确定删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+
+        const TYPE_MAP = {
+            exam: { label: '考试', color: '#e74a3b', cls: 'type-exam' },
+            lecture: { label: '讲座', color: '#4e73df', cls: 'type-lecture' },
+            experiment: { label: '实验', color: '#1cc88a', cls: 'type-experiment' },
+            activity: { label: '活动', color: '#f6c23e', cls: 'type-activity' }
+        };
+
+        let currentYear, currentMonth;
+        let allEvents = [];
+        let classesList = [];
+        let editingEventId = null;
+        let activePopover = null;
+
+        const now = new Date();
+        currentYear = now.getFullYear();
+        currentMonth = now.getMonth();
+
+        function init() {
+            loadClasses();
+            loadEvents();
+        }
+
+        async function loadClasses() {
+            try {
+                classesList = await api.request('/classes/list');
+            } catch (e) { }
+        }
+
+        async function loadEvents() {
+            let start, end;
+            if (document.getElementById('agendaView').style.display !== 'none') {
+                start = new Date(currentYear, currentMonth - 1, 1);
+                end = new Date(currentYear, currentMonth + 2, 0);
+            } else {
+                start = new Date(currentYear, currentMonth, 1);
+                end = new Date(currentYear, currentMonth + 1, 0);
+            }
+            const startStr = formatDateISO(start);
+            const endStr = formatDateISO(end);
+            const typeFilter = document.getElementById('typeFilter').value;
+            let url = `/calendar/event/range?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`;
+            if (typeFilter) url += `&eventType=${typeFilter}`;
+
+            try {
+                allEvents = await api.request(url);
+            } catch (e) {
+                allEvents = [];
+            }
+            renderCurrentView();
+        }
+
+        function formatDateISO(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}T00:00:00`;
+        }
+
+        function parseTime(isoStr) {
+            return isoStr ? isoStr.replace('T', ' ').substring(0, 16) : '';
+        }
+
+        function getDatePart(isoStr) {
+            if (!isoStr) return '';
+            return isoStr.substring(0, 10);
+        }
+
+        function getEventsForDate(dateStr) {
+            return allEvents.filter(ev => {
+                const evStart = getDatePart(ev.startTime);
+                const evEnd = getDatePart(ev.endTime);
+                return dateStr >= evStart && dateStr <= evEnd;
+            });
+        }
+
+        function renderCurrentView() {
+            if (document.getElementById('agendaView').style.display !== 'none') {
+                renderAgenda();
+            } else {
+                renderMonth();
+            }
+        }
+
+        function renderMonth() {
+            const label = document.getElementById('monthLabel');
+            label.textContent = `${currentYear}年${currentMonth + 1}月`;
+
+            const grid = document.getElementById('calendarGrid');
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            let html = weekdays.map(d => `<div class="calendar-header-cell">${d}</div>`).join('');
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+            for (let i = 0; i < totalCells; i++) {
+                let dayNum, dateStr, isOther = false;
+
+                if (i < firstDay) {
+                    dayNum = daysInPrevMonth - firstDay + i + 1;
+                    const pm = currentMonth === 0 ? 11 : currentMonth - 1;
+                    const py = currentMonth === 0 ? currentYear - 1 : currentYear;
+                    dateStr = `${py}-${String(pm + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                    isOther = true;
+                } else if (i >= firstDay + daysInMonth) {
+                    dayNum = i - firstDay - daysInMonth + 1;
+                    const nm = currentMonth === 11 ? 0 : currentMonth + 1;
+                    const ny = currentMonth === 11 ? currentYear + 1 : currentYear;
+                    dateStr = `${ny}-${String(nm + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                    isOther = true;
+                } else {
+                    dayNum = i - firstDay + 1;
+                    dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                }
+
+                const isToday = dateStr === todayStr;
+                const dayEvents = getEventsForDate(dateStr);
+                const classes = ['calendar-day'];
+                if (isOther) classes.push('other-month');
+                if (isToday) classes.push('today');
+
+                let evHtml = '';
+                const maxShow = 3;
+                dayEvents.slice(0, maxShow).forEach(ev => {
+                    const info = TYPE_MAP[ev.eventType] || TYPE_MAP.lecture;
+                    evHtml += `<div class="day-event-dot ${info.cls}">${info.label} ${ev.title}</div>`;
+                });
+                if (dayEvents.length > maxShow) {
+                    evHtml += `<div class="day-event-more">+${dayEvents.length - maxShow} 更多</div>`;
+                }
+
+                html += `<div class="${classes.join(' ')}" data-date="${dateStr}" onclick="onDayClick(this, '${dateStr}')">
+                    <div class="day-number">${dayNum}</div>
+                    <div class="day-events">${evHtml}</div>
+                </div>`;
+            }
+
+            grid.innerHTML = html;
+        }
+
+        function onDayClick(cell, dateStr) {
+            if (activePopover) {
+                activePopover.remove();
+                activePopover = null;
+            }
+
+            const dayEvents = getEventsForDate(dateStr);
+            if (!dayEvents.length) return;
+
+            const popover = document.createElement('div');
+            popover.className = 'calendar-popover';
+
+            const d = new Date(dateStr);
+            const dateLabel = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+
+            let inner = `<div class="popover-title">${dateLabel} (${dayEvents.length}个事件)</div>`;
+            dayEvents.forEach(ev => {
+                const info = TYPE_MAP[ev.eventType] || TYPE_MAP.lecture;
+                const timeRange = `${parseTime(ev.startTime)} ~ ${parseTime(ev.endTime)}`;
+                inner += `<div class="popover-event">
+                    <span class="type-badge ${info.cls}">${info.label}</span>
+                    <div style="min-width:0;flex:1">
+                        <div style="font-size:0.8rem;font-weight:600;color:#3a3b45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.title}</div>
+                        <div style="font-size:0.7rem;color:#858796">${timeRange}</div>
+                        ${ev.location ? `<div style="font-size:0.7rem;color:#858796"><i class="bi bi-geo-alt"></i> ${ev.location}</div>` : ''}
+                    </div>
+                </div>`;
+            });
+            popover.innerHTML = inner;
+
+            cell.style.position = 'relative';
+            cell.appendChild(popover);
+            activePopover = popover;
+
+            const closeHandler = (e) => {
+                if (!popover.contains(e.target) && !cell.contains(e.target)) {
+                    popover.remove();
+                    activePopover = null;
+                    document.removeEventListener('click', closeHandler);
+                }
+            };
+            setTimeout(() => document.addEventListener('click', closeHandler), 0);
+        }
+
+        function renderAgenda() {
+            const container = document.getElementById('agendaList');
+            if (!allEvents.length) {
+                container.innerHTML = `<div class="empty-state">
+                    <i class="bi bi-calendar-x d-block"></i>
+                    <div>暂无事件</div>
+                </div>`;
+                return;
+            }
+
+            const grouped = {};
+            allEvents.forEach(ev => {
+                const dateKey = getDatePart(ev.startTime);
+                if (!grouped[dateKey]) grouped[dateKey] = [];
+                grouped[dateKey].push(ev);
+            });
+
+            const sortedDates = Object.keys(grouped).sort();
+            let html = '';
+
+            sortedDates.forEach(dateKey => {
+                const d = new Date(dateKey);
+                const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()];
+                const label = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${weekday}`;
+
+                html += `<div class="agenda-date-header">${label}</div>`;
+                grouped[dateKey].forEach(ev => {
+                    const info = TYPE_MAP[ev.eventType] || TYPE_MAP.lecture;
+                    const timeRange = `${parseTime(ev.startTime)} ~ ${parseTime(ev.endTime)}`;
+                    const classStr = ev.classNames || '';
+                    html += `<div class="agenda-event-card">
+                        <span class="type-badge ${info.cls}" style="margin-top:2px">${info.label}</span>
+                        <div class="event-info">
+                            <div class="event-title">${ev.title}</div>
+                            <div class="event-meta">
+                                <i class="bi bi-clock"></i> ${timeRange}
+                                ${ev.location ? ` &nbsp;<i class="bi bi-geo-alt"></i> ${ev.location}` : ''}
+                            </div>
+                            ${classStr ? `<div class="event-meta"><i class="bi bi-layers"></i> ${classStr}</div>` : ''}
+                        </div>
+                        <div class="event-actions">
+                            <button class="btn btn-sm btn-outline-primary" onclick="showEditModal(${ev.id})" title="编辑"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete(${ev.id})" title="删除"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>`;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        function switchView(view) {
+            const monthView = document.getElementById('monthView');
+            const agendaView = document.getElementById('agendaView');
+            const btnMonth = document.getElementById('btnMonthView');
+            const btnAgenda = document.getElementById('btnAgendaView');
+
+            if (view === 'month') {
+                monthView.style.display = '';
+                agendaView.style.display = 'none';
+                btnMonth.classList.add('active');
+                btnAgenda.classList.remove('active');
+            } else {
+                monthView.style.display = 'none';
+                agendaView.style.display = '';
+                btnMonth.classList.remove('active');
+                btnAgenda.classList.add('active');
+            }
+            renderCurrentView();
+        }
+
+        function navMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (activePopover) { activePopover.remove(); activePopover = null; }
+            loadEvents();
+        }
+
+        function showCreateModal() {
+            editingEventId = null;
+            document.getElementById('eventModalTitle').textContent = '新建事件';
+            document.getElementById('f_title').value = '';
+            document.getElementById('f_eventType').value = 'lecture';
+            document.getElementById('f_startTime').value = '';
+            document.getElementById('f_endTime').value = '';
+            document.getElementById('f_location').value = '';
+            document.getElementById('f_remark').value = '';
+            document.getElementById('f_creatorName').value = session.user.tname || '';
+            renderClassCheckboxes([]);
+            clearValidation();
+            new bootstrap.Modal(document.getElementById('eventModal')).show();
+        }
+
+        async function showEditModal(eventId) {
+            editingEventId = eventId;
+            document.getElementById('eventModalTitle').textContent = '编辑事件';
+            clearValidation();
+
+            try {
+                const data = await api.request(`/calendar/event/detail?id=${eventId}`);
+                const ev = data.event;
+                const cids = data.classIds || [];
+                document.getElementById('f_title').value = ev.title || '';
+                document.getElementById('f_eventType').value = ev.eventType || 'lecture';
+                document.getElementById('f_startTime').value = toDatetimeLocal(ev.startTime);
+                document.getElementById('f_endTime').value = toDatetimeLocal(ev.endTime);
+                document.getElementById('f_location').value = ev.location || '';
+                document.getElementById('f_remark').value = ev.remark || '';
+                document.getElementById('f_creatorName').value = ev.creatorName || session.user.tname || '';
+                renderClassCheckboxes(cids);
+            } catch (e) {
+                api.showToast('加载事件详情失败', 'danger');
+                return;
+            }
+
+            new bootstrap.Modal(document.getElementById('eventModal')).show();
+        }
+
+        function toDatetimeLocal(isoStr) {
+            if (!isoStr) return '';
+            return isoStr.substring(0, 16);
+        }
+
+        function renderClassCheckboxes(selectedIds) {
+            const container = document.getElementById('f_classIds');
+            container.innerHTML = classesList.map(c => {
+                const checked = selectedIds.includes(c.cid) ? 'checked' : '';
+                return `<div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${c.cid}" id="cls_${c.cid}" ${checked}>
+                    <label class="form-check-label" for="cls_${c.cid}">${c.cname}</label>
+                </div>`;
+            }).join('');
+        }
+
+        function getSelectedClassIds() {
+            const checkboxes = document.querySelectorAll('#f_classIds input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
+
+        function clearValidation() {
+            document.querySelectorAll('#eventModal .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            document.getElementById('classFeedback').style.display = 'none';
+        }
+
+        async function saveEvent() {
+            clearValidation();
+            let valid = true;
+
+            const title = document.getElementById('f_title').value.trim();
+            const eventType = document.getElementById('f_eventType').value;
+            const startTime = document.getElementById('f_startTime').value;
+            const endTime = document.getElementById('f_endTime').value;
+            const location = document.getElementById('f_location').value.trim();
+            const remark = document.getElementById('f_remark').value.trim();
+            const creatorName = document.getElementById('f_creatorName').value.trim();
+            const classIds = getSelectedClassIds();
+
+            if (!title) {
+                document.getElementById('f_title').classList.add('is-invalid');
+                valid = false;
+            }
+
+            if (startTime && endTime && endTime <= startTime) {
+                document.getElementById('f_endTime').classList.add('is-invalid');
+                document.getElementById('endTimeFeedback').textContent = '结束时间必须晚于开始时间';
+                valid = false;
+            }
+
+            if (!classIds.length) {
+                document.getElementById('classFeedback').style.display = 'block';
+                valid = false;
+            }
+
+            if (!valid) return;
+
+            const body = {
+                title,
+                eventType,
+                startTime: startTime ? startTime + ':00' : '',
+                endTime: endTime ? endTime + ':00' : '',
+                location,
+                remark,
+                creatorId: session.user.tid,
+                creatorName,
+                classIds
+            };
+
+            try {
+                if (editingEventId) {
+                    body.id = editingEventId;
+                    body.isArchived = false;
+                    await api.request('/calendar/event/update', { method: 'POST', body: JSON.stringify(body) });
+                    api.showToast('事件更新成功', 'success');
+                } else {
+                    await api.request('/calendar/event/create', { method: 'POST', body: JSON.stringify(body) });
+                    api.showToast('事件创建成功', 'success');
+                }
+                bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+                loadEvents();
+            } catch (e) { }
+        }
+
+        function confirmDelete(eventId) {
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            document.getElementById('confirmDeleteBtn').onclick = async () => {
+                try {
+                    await api.request(`/calendar/event/delete/${eventId}`, { method: 'DELETE' });
+                    api.showToast('删除成功', 'success');
+                    modal.hide();
+                    loadEvents();
+                } catch (e) { }
+            };
+            modal.show();
+        }
+
+        async function archiveExpired() {
+            try {
+                const result = await api.request('/calendar/event/archive', { method: 'POST' });
+                const count = result.archivedCount || 0;
+                api.showToast(`已归档 ${count} 个过期事件`, 'success');
+                loadEvents();
+            } catch (e) { }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

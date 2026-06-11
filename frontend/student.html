@@ -31,6 +31,7 @@
                     <li class="nav-link px-3" role="button" onclick="showSection('interact')">互动交流</li>
                     <li class="nav-link px-3" role="button" onclick="showSection('score')">我的成绩</li>
                     <li class="nav-link px-3" role="button" onclick="showSection('evaluation')">教师评教</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('calendar')">教学日历</li>
                 </ul>
                 <div class="d-flex align-items-center">
                     <span id="userInfo" class="me-3 text-muted small"></span>
@@ -49,6 +50,12 @@
                         <h5 class="fw-bold mb-3">最新技术动态</h5>
                         <div id="news-list" class="list-group list-group-flush">
                             <!-- JS loaded -->
+                        </div>
+                    </div>
+                    <div class="card p-4 mb-4">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-bell text-warning me-2"></i>近期提醒</h5>
+                        <div id="upcoming-reminders">
+                            <div class="text-center py-3 text-muted small">加载中...</div>
                         </div>
                     </div>
                 </div>
@@ -236,6 +243,48 @@
                 </form>
             </div>
         </div>
+
+        <!-- Calendar Section -->
+        <div id="calendar-section" class="section d-none">
+            <div class="card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2"></i>教学日历</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <select id="calTypeFilter" class="form-select form-select-sm" style="width:130px" onchange="loadStudentCalendar()">
+                            <option value="">全部类型</option>
+                            <option value="exam">考试</option>
+                            <option value="lecture">讲座</option>
+                            <option value="experiment">实验</option>
+                            <option value="activity">活动</option>
+                        </select>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary active" onclick="setCalView('month', this)">月视图</button>
+                            <button class="btn btn-outline-primary" onclick="setCalView('agenda', this)">议程列表</button>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success" onclick="exportICal()" title="导出iCal订阅">
+                            <i class="bi bi-download"></i> 导出日历
+                        </button>
+                    </div>
+                </div>
+
+                <div id="cal-month-view">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="calNavMonth(-1)"><i class="bi bi-chevron-left"></i></button>
+                        <h6 class="fw-bold mb-0" id="calMonthLabel"></h6>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="calNavMonth(1)"><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                    <div class="row text-center mb-2 fw-bold small text-muted">
+                        <div class="col">日</div><div class="col">一</div><div class="col">二</div>
+                        <div class="col">三</div><div class="col">四</div><div class="col">五</div><div class="col">六</div>
+                    </div>
+                    <div id="calGrid"></div>
+                </div>
+
+                <div id="cal-agenda-view" class="d-none">
+                    <div id="calAgendaList"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -258,13 +307,14 @@
             document.getElementById(`${id}-section`).classList.remove('d-none');
             event.target.classList.add('active');
 
-            if (id === 'home') loadNews();
+            if (id === 'home') { loadNews(); loadUpcomingReminders(); }
             if (id === 'course-intro') loadCourseIntros();
             if (id === 'teaching') loadTeaching();
             if (id === 'experiment') loadExperiments();
             if (id === 'interact') loadInteractions();
             if (id === 'score') loadMyScores();
             if (id === 'evaluation') loadEvalActivities();
+            if (id === 'calendar') loadStudentCalendar();
         }
 
         async function loadNews() {
@@ -747,6 +797,247 @@
         });
 
         loadNews(); // Init
+        loadUpcomingReminders();
+
+        const eventTypeConfig = {
+            exam: { label: '考试', color: '#e74a3b', bg: '#fde8e8' },
+            lecture: { label: '讲座', color: '#4e73df', bg: '#e8edfc' },
+            experiment: { label: '实验', color: '#1cc88a', bg: '#e3f9f0' },
+            activity: { label: '活动', color: '#f6c23e', bg: '#fef8e7' }
+        };
+
+        let calCurrentDate = new Date();
+        let calCurrentView = 'month';
+        let calEventsCache = [];
+
+        async function loadUpcomingReminders() {
+            const container = document.getElementById('upcoming-reminders');
+            if (!session.user.classId) {
+                container.innerHTML = '<div class="text-center py-3 text-muted small">未关联班级，无法查看提醒</div>';
+                return;
+            }
+            try {
+                const events = await api.request(`/calendar/event/upcoming?classId=${session.user.classId}&limit=5`);
+                if (!events || events.length === 0) {
+                    container.innerHTML = '<div class="text-center py-3 text-muted small">暂无近期事件</div>';
+                    return;
+                }
+                container.innerHTML = events.map(ev => {
+                    const cfg = eventTypeConfig[ev.eventType] || { label: '事件', color: '#858796', bg: '#f0f0f0' };
+                    const start = new Date(ev.startTime);
+                    const now = new Date();
+                    const diffMs = start - now;
+                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                    let urgency = '';
+                    if (diffDays <= 1) urgency = 'border-start border-danger border-3';
+                    else if (diffDays <= 3) urgency = 'border-start border-warning border-3';
+                    else urgency = 'border-start border-info border-3';
+
+                    const timeStr = start.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }) + ' ' +
+                        start.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    const endStr = new Date(ev.endTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+                    return `<div class="card mb-2 ${urgency}" style="background:${cfg.bg}">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="badge me-1" style="background:${cfg.color};font-size:0.7rem">${cfg.label}</span>
+                                    <strong class="small">${ev.title}</strong>
+                                </div>
+                                <small class="text-muted">${diffDays <= 0 ? '今天' : diffDays + '天后'}</small>
+                            </div>
+                            <div class="small text-muted mt-1">
+                                <i class="bi bi-clock me-1"></i>${timeStr} - ${endStr}
+                                ${ev.location ? '<span class="ms-2"><i class="bi bi-geo-alt me-1"></i>' + ev.location + '</span>' : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = '<div class="text-center py-3 text-muted small">加载失败</div>';
+            }
+        }
+
+        function setCalView(view, btn) {
+            calCurrentView = view;
+            document.querySelectorAll('#calendar-section .btn-group .btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (view === 'month') {
+                document.getElementById('cal-month-view').classList.remove('d-none');
+                document.getElementById('cal-agenda-view').classList.add('d-none');
+                renderCalMonth();
+            } else {
+                document.getElementById('cal-month-view').classList.add('d-none');
+                document.getElementById('cal-agenda-view').classList.remove('d-none');
+                renderCalAgenda();
+            }
+        }
+
+        function calNavMonth(dir) {
+            calCurrentDate.setMonth(calCurrentDate.getMonth() + dir);
+            loadStudentCalendar();
+        }
+
+        async function loadStudentCalendar() {
+            if (!session.user.classId) return;
+            const year = calCurrentDate.getFullYear();
+            const month = calCurrentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0, 23, 59, 59);
+            const startStr = toLocalISO(firstDay);
+            const endStr = toLocalISO(lastDay);
+            const typeFilter = document.getElementById('calTypeFilter').value;
+            let url = `/calendar/event/class?classId=${session.user.classId}&start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`;
+            try {
+                calEventsCache = await api.request(url);
+                if (typeFilter) {
+                    calEventsCache = calEventsCache.filter(e => e.eventType === typeFilter);
+                }
+                document.getElementById('calMonthLabel').textContent = `${year}年${month + 1}月`;
+                if (calCurrentView === 'month') renderCalMonth();
+                else renderCalAgenda();
+            } catch (err) {}
+        }
+
+        function renderCalMonth() {
+            const grid = document.getElementById('calGrid');
+            const year = calCurrentDate.getFullYear();
+            const month = calCurrentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const startWeekday = firstDay.getDay();
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+            const eventsByDate = {};
+            calEventsCache.forEach(ev => {
+                const s = new Date(ev.startTime);
+                const e = new Date(ev.endTime);
+                const sDate = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+                const eDate = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+                for (let d = new Date(sDate); d <= eDate; d.setDate(d.getDate() + 1)) {
+                    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    if (!eventsByDate[key]) eventsByDate[key] = [];
+                    eventsByDate[key].push(ev);
+                }
+            });
+
+            let html = '<div class="row row-cols-7 g-1">';
+            for (let i = 0; i < startWeekday; i++) {
+                html += '<div class="col" style="min-height:90px"></div>';
+            }
+            for (let d = 1; d <= lastDate; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const isToday = dateStr === todayStr;
+                const dayEvents = eventsByDate[dateStr] || [];
+                html += `<div class="col" style="min-height:90px">
+                    <div class="p-1 rounded ${isToday ? 'bg-primary bg-opacity-10' : ''}" style="min-height:90px; position:relative">
+                        <div class="text-end small ${isToday ? 'fw-bold text-primary' : 'text-muted'}">${isToday ? '<span class="badge bg-primary rounded-circle">' + d + '</span>' : d}</div>
+                        ${dayEvents.slice(0, 2).map(ev => {
+                            const cfg = eventTypeConfig[ev.eventType] || { label: '', color: '#858796' };
+                            return `<div class="small text-truncate px-1 rounded mb-1" style="background:${cfg.color}22;color:${cfg.color};font-size:0.7rem;cursor:pointer" title="${ev.title}" onclick="showEventDetail(${ev.id})">${ev.title}</div>`;
+                        }).join('')}
+                        ${dayEvents.length > 2 ? `<div class="small text-muted" style="font-size:0.65rem">+${dayEvents.length - 2} 更多</div>` : ''}
+                    </div>
+                </div>`;
+            }
+            html += '</div>';
+            grid.innerHTML = html;
+        }
+
+        function renderCalAgenda() {
+            const container = document.getElementById('calAgendaList');
+            if (!calEventsCache || calEventsCache.length === 0) {
+                container.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-calendar-x fs-1 d-block mb-2"></i>本月暂无教学事件</div>';
+                return;
+            }
+            const grouped = {};
+            calEventsCache.forEach(ev => {
+                const dateKey = ev.startTime.split('T')[0];
+                if (!grouped[dateKey]) grouped[dateKey] = [];
+                grouped[dateKey].push(ev);
+            });
+            const sortedDates = Object.keys(grouped).sort();
+            container.innerHTML = sortedDates.map(dateKey => {
+                const d = new Date(dateKey + 'T00:00:00');
+                const weekday = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+                const dateLabel = `${d.getMonth()+1}月${d.getDate()}日 ${weekday}`;
+                return `<div class="mb-3">
+                    <h6 class="fw-bold text-muted small mb-2"><i class="bi bi-calendar-event me-1"></i>${dateLabel}</h6>
+                    ${grouped[dateKey].map(ev => {
+                        const cfg = eventTypeConfig[ev.eventType] || { label: '事件', color: '#858796', bg: '#f0f0f0' };
+                        const st = new Date(ev.startTime).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+                        const et = new Date(ev.endTime).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+                        return `<div class="card mb-2" style="border-left: 3px solid ${cfg.color}">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="badge me-1" style="background:${cfg.color};font-size:0.7rem">${cfg.label}</span>
+                                        <strong class="small">${ev.title}</strong>
+                                    </div>
+                                    <small class="text-muted">${st} - ${et}</small>
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    ${ev.location ? '<i class="bi bi-geo-alt me-1"></i>' + ev.location : ''}
+                                    ${ev.remark ? '<span class="ms-2"><i class="bi bi-chat-text me-1"></i>' + ev.remark + '</span>' : ''}
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+            }).join('');
+        }
+
+        function showEventDetail(eventId) {
+            const ev = calEventsCache.find(e => e.id === eventId);
+            if (!ev) return;
+            const cfg = eventTypeConfig[ev.eventType] || { label: '事件', color: '#858796' };
+            const st = new Date(ev.startTime).toLocaleString('zh-CN');
+            const et = new Date(ev.endTime).toLocaleString('zh-CN');
+            const modal = document.getElementById('eventDetailModal');
+            if (!modal) {
+                const m = document.createElement('div');
+                m.className = 'modal fade';
+                m.id = 'eventDetailModal';
+                m.setAttribute('tabindex', '-1');
+                m.innerHTML = `<div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow">
+                    <div class="modal-header" style="border-left:4px solid ${cfg.color}">
+                        <h5 class="modal-title fw-bold" id="evDetailTitle"></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="evDetailBody"></div>
+                </div></div>`;
+                document.body.appendChild(m);
+            }
+            document.getElementById('evDetailTitle').textContent = ev.title;
+            document.querySelector('#eventDetailModal .modal-header').style.borderLeftColor = cfg.color;
+            document.getElementById('evDetailBody').innerHTML = `
+                <div class="mb-2"><span class="badge" style="background:${cfg.color}">${cfg.label}</span></div>
+                <div class="mb-2"><i class="bi bi-clock me-2 text-muted"></i>${st} ~ ${et}</div>
+                ${ev.location ? '<div class="mb-2"><i class="bi bi-geo-alt me-2 text-muted"></i>' + ev.location + '</div>' : ''}
+                ${ev.remark ? '<div class="mb-2"><i class="bi bi-chat-text me-2 text-muted"></i>' + ev.remark + '</div>' : ''}
+                ${ev.classNames && ev.classNames.length ? '<div><i class="bi bi-people me-2 text-muted"></i>' + ev.classNames.join('、') + '</div>' : ''}
+            `;
+            new bootstrap.Modal(document.getElementById('eventDetailModal')).show();
+        }
+
+        function exportICal() {
+            if (!session.user.classId) {
+                api.showToast('未关联班级，无法导出', 'warning');
+                return;
+            }
+            window.open(api.baseUrl + `/calendar/export/ical?classId=${session.user.classId}`, '_blank');
+        }
+
+        function toLocalISO(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const mi = String(date.getMinutes()).padStart(2, '0');
+            const s = String(date.getSeconds()).padStart(2, '0');
+            return `${y}-${m}-${d}T${h}:${mi}:${s}`;
+        }
     </script>
 </body>
 
