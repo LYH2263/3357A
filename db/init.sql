@@ -291,6 +291,53 @@ INSERT INTO `interaction` (`name`, `comask`, `asktime`, `replname`, `comrepl`, `
 ('小尤', '提问29', '2026-02-26 12:00:00', NULL, NULL, NULL),
 ('小许', '提问30', '2026-02-26 13:00:00', NULL, NULL, NULL);
 
+-- (9) 成绩权重配置表 score_config
+CREATE TABLE `score_config` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `course_id` INT NOT NULL COMMENT '课程id(test.tid)',
+    `class_id` INT NOT NULL COMMENT '班级id(classes.cid)',
+    `regular_weight` DECIMAL(5,2) DEFAULT 30.00 COMMENT '平时分权重(%)',
+    `midterm_weight` DECIMAL(5,2) DEFAULT 30.00 COMMENT '期中权重(%)',
+    `final_weight` DECIMAL(5,2) DEFAULT 40.00 COMMENT '期末权重(%)',
+    `score_precision` TINYINT DEFAULT 1 COMMENT '总评成绩保留小数位数',
+    `grade_excellent` DECIMAL(5,2) DEFAULT 90.00 COMMENT '优秀分数线',
+    `grade_good` DECIMAL(5,2) DEFAULT 80.00 COMMENT '良好分数线',
+    `grade_medium` DECIMAL(5,2) DEFAULT 70.00 COMMENT '中等分数线',
+    `grade_pass` DECIMAL(5,2) DEFAULT 60.00 COMMENT '及格分数线',
+    `is_locked` TINYINT DEFAULT 0 COMMENT '是否锁定：0-未锁定，1-已锁定',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_course_class` (`course_id`, `class_id`),
+    FOREIGN KEY (`course_id`) REFERENCES `test`(`tid`) ON DELETE CASCADE,
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成绩权重配置表';
+
+-- (10) 学生成绩表 score
+CREATE TABLE `score` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `course_id` INT NOT NULL COMMENT '课程id(test.tid)',
+    `class_id` INT NOT NULL COMMENT '班级id(classes.cid)',
+    `student_id` INT NOT NULL COMMENT '学生id(user.uid)',
+    `student_name` VARCHAR(50) COMMENT '学生姓名(冗余)',
+    `student_no` VARCHAR(50) COMMENT '学号(冗余)',
+    `regular_score` DECIMAL(5,2) DEFAULT NULL COMMENT '平时分',
+    `midterm_score` DECIMAL(5,2) DEFAULT NULL COMMENT '期中分',
+    `final_score` DECIMAL(5,2) DEFAULT NULL COMMENT '期末分',
+    `total_score` DECIMAL(5,2) DEFAULT NULL COMMENT '总评分',
+    `grade` VARCHAR(10) DEFAULT NULL COMMENT '等级：优/良/中/及格/不及格',
+    `class_rank` INT DEFAULT NULL COMMENT '班级内排名',
+    `status` VARCHAR(20) DEFAULT 'normal' COMMENT '状态：normal-正常，absent-缺考，unrecorded-缺录',
+    `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_course_class_student` (`course_id`, `class_id`, `student_id`),
+    KEY `idx_course_class` (`course_id`, `class_id`),
+    KEY `idx_student` (`student_id`),
+    FOREIGN KEY (`course_id`) REFERENCES `test`(`tid`) ON DELETE CASCADE,
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`uid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生成绩表';
+
 -- News
 INSERT INTO `news` (newstitle, newscontent, newsdate) VALUES 
 ('Java 21 正式发布', 'Java 21 带来了虚拟线程等重大特性。', '2026-02-01 10:00:00'),

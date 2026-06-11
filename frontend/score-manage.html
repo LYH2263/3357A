@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成绩管理 - SchoolSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .nav-link {
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+            padding: 0.8rem 1rem;
+            color: #333;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: #f0f4ff;
+            color: var(--primary-color);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+
+        .score-input {
+            width: 80px;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+        }
+
+        .grade-优 { background-color: #198754 !important; }
+        .grade-良 { background-color: #0dcaf0 !important; }
+        .grade-中 { background-color: #ffc107 !important; color: #333 !important; }
+        .grade-及格 { background-color: #fd7e14 !important; }
+        .grade-不及格 { background-color: #dc3545 !important; }
+
+        .stat-card {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .locked-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar d-flex flex-column p-3 bg-white border-end">
+        <a href="teacher.html" class="d-flex align-items-center mb-3 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="#" class="nav-link active"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold"><i class="bi bi-bar-chart-line text-primary me-2"></i>成绩管理</h4>
+            <div id="lockStatusBadge"></div>
+        </div>
+
+        <div class="card p-4 mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">选择课程</label>
+                    <select id="courseSelect" class="form-select" onchange="onCourseClassChange()">
+                        <option value="">请选择课程</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">选择班级</label>
+                    <select id="classSelect" class="form-select" onchange="onCourseClassChange()">
+                        <option value="">请选择班级</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button class="btn btn-outline-primary flex-grow-1" onclick="showWeightConfig()">
+                        <i class="bi bi-sliders"></i> 权重配置
+                    </button>
+                    <button class="btn btn-outline-success flex-grow-1" onclick="switchView()">
+                        <i class="bi bi-eye"></i> <span id="viewToggleText">查看成绩单</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="inputView">
+            <div class="card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">成绩录入</h6>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-info" onclick="initScores()">
+                            <i class="bi bi-plus-circle"></i> 初始化学生名单
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="saveAllScores()" id="saveAllBtn">
+                            <i class="bi bi-save"></i> 批量保存
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover align-middle table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>学号</th>
+                                <th>姓名</th>
+                                <th>平时分</th>
+                                <th>期中分</th>
+                                <th>期末分</th>
+                                <th>状态</th>
+                                <th>总评</th>
+                                <th>等级</th>
+                                <th>排名</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scoreTableBody">
+                            <tr>
+                                <td colspan="10" class="text-center py-4 text-muted">
+                                    请先选择课程和班级
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="reportView" class="d-none">
+            <div class="row mb-4">
+                <div class="col-md-2">
+                    <div class="card p-3 stat-card">
+                        <small class="text-muted">总人数</small>
+                        <h4 class="fw-bold text-primary" id="statTotal">0</h4>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card p-3 stat-card" style="border-left-color: #198754;">
+                        <small class="text-muted">最高分</small>
+                        <h4 class="fw-bold text-success" id="statMax">-</h4>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card p-3 stat-card" style="border-left-color: #dc3545;">
+                        <small class="text-muted">最低分</small>
+                        <h4 class="fw-bold text-danger" id="statMin">-</h4>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card p-3 stat-card" style="border-left-color: #ffc107;">
+                        <small class="text-muted">平均分</small>
+                        <h4 class="fw-bold text-warning" id="statAvg">-</h4>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card p-3 stat-card" style="border-left-color: #0dcaf0;">
+                        <small class="text-muted">及格率</small>
+                        <h4 class="fw-bold text-info" id="statPassRate">-</h4>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card p-3 d-flex justify-content-center align-items-center">
+                        <button class="btn btn-outline-secondary btn-sm" id="lockBtn" onclick="toggleLock()">
+                            <i class="bi bi-lock-fill"></i> 锁定成绩
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card p-4">
+                        <h6 class="fw-bold mb-3">分数段分布</h6>
+                        <div id="scoreDistribution"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card p-4">
+                        <h6 class="fw-bold mb-3">等级分布</h6>
+                        <div id="gradeDistribution"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3">成绩单</h6>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover align-middle table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>排名</th>
+                                <th>学号</th>
+                                <th>姓名</th>
+                                <th>平时分</th>
+                                <th>期中分</th>
+                                <th>期末分</th>
+                                <th>总评</th>
+                                <th>等级</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="weightConfigModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">权重配置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">平时分权重 (%)</label>
+                        <input type="number" id="wRegular" class="form-control" min="0" max="100" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">期中权重 (%)</label>
+                        <input type="number" id="wMidterm" class="form-control" min="0" max="100" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">期末权重 (%)</label>
+                        <input type="number" id="wFinal" class="form-control" min="0" max="100" step="0.01">
+                    </div>
+                    <div class="alert alert-info small" id="weightSumAlert">
+                        当前权重之和：<span id="weightSum">0</span>%（需要等于100%）
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">总评保留小数位数</label>
+                        <input type="number" id="wPrecision" class="form-control" min="0" max="4" value="1">
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label small">优秀分数线</label>
+                            <input type="number" id="gExcellent" class="form-control form-control-sm" value="90">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">良好分数线</label>
+                            <input type="number" id="gGood" class="form-control form-control-sm" value="80">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">中等分数线</label>
+                            <input type="number" id="gMedium" class="form-control form-control-sm" value="70">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">及格分数线</label>
+                            <input type="number" id="gPass" class="form-control form-control-sm" value="60">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveWeightConfig()">保存配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editScoreModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">编辑成绩</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <small class="text-muted" id="editStudentInfo"></small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">平时分</label>
+                        <input type="number" id="eRegular" class="form-control" min="0" max="100" step="0.5">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">期中分</label>
+                        <input type="number" id="eMidterm" class="form-control" min="0" max="100" step="0.5">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">期末分</label>
+                        <input type="number" id="eFinal" class="form-control" min="0" max="100" step="0.5">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">状态</label>
+                        <select id="eStatus" class="form-select">
+                            <option value="normal">正常</option>
+                            <option value="absent">缺考</option>
+                            <option value="unrecorded">缺录</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <input type="text" id="eRemark" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSingleScore()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+
+        let courseList = [];
+        let classList = [];
+        let scoreList = [];
+        let currentConfig = null;
+        let currentView = 'input';
+        let editingScoreId = null;
+
+        async function init() {
+            try {
+                courseList = await api.request('/test/list');
+                classList = await api.request('/classes/list');
+
+                const courseSelect = document.getElementById('courseSelect');
+                courseSelect.innerHTML = '<option value="">请选择课程</option>' +
+                    courseList.map(c => `<option value="${c.tid}">${c.ttitle}</option>`).join('');
+
+                const classSelect = document.getElementById('classSelect');
+                classSelect.innerHTML = '<option value="">请选择班级</option>' +
+                    classList.map(c => `<option value="${c.cid}">${c.cname}</option>`).join('');
+            } catch (err) { }
+        }
+
+        function onCourseClassChange() {
+            const courseId = document.getElementById('courseSelect').value;
+            const classId = document.getElementById('classSelect').value;
+
+            if (courseId && classId) {
+                loadScores();
+                loadConfig();
+            } else {
+                document.getElementById('scoreTableBody').innerHTML = `
+                    <tr><td colspan="10" class="text-center py-4 text-muted">请先选择课程和班级</td></tr>`;
+            }
+        }
+
+        async function loadConfig() {
+            const courseId = document.getElementById('courseSelect').value;
+            const classId = document.getElementById('classSelect').value;
+            if (!courseId || !classId) return;
+
+            try {
+                currentConfig = await api.request(`/score/config?courseId=${courseId}&classId=${classId}`);
+                updateLockStatus();
+            } catch (err) { }
+        }
+
+        function updateLockStatus() {
+            const locked = currentConfig && currentConfig.isLocked === 1;
+            const badge = document.getElementById('lockStatusBadge');
+            const saveBtn = document.getElementById('saveAllBtn');
+
+            if (locked) {
+                badge.innerHTML = '<span class="badge locked-badge"><i class="bi bi-lock-fill"></i> 成绩已锁定</span>';
+                saveBtn.disabled = true;
+                saveBtn.classList.add('disabled');
+                document.getElementById('lockBtn').innerHTML = '<i class="bi bi-unlock-fill"></i> 解除锁定';
+            } else {
+                badge.innerHTML = '<span class="badge bg-light text-dark"><i class="bi bi-unlock"></i> 成绩未锁定</span>';
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('disabled');
+                document.getElementById('lockBtn').innerHTML = '<i class="bi bi-lock-fill"></i> 锁定成绩';
+            }
+        }
+
+        async function loadScores() {
+            const courseId = document.getElementById('courseSelect').value;
+            const classId = document.getElementById('classSelect').value;
+            if (!courseId || !classId) return;
+
+            try {
+                scoreList = await api.request(`/score/list?courseId=${courseId}&classId=${classId}`);
+                renderScoreTable();
+                if (currentView === 'report') {
+                    loadStatistics();
+                }
+            } catch (err) { }
+        }
+
+        function renderScoreTable() {
+            const body = document.getElementById('scoreTableBody');
+            if (scoreList.length === 0) {
+                body.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">暂无成绩数据，点击"初始化学生名单"开始录入</td></tr>`;
+                return;
+            }
+
+            const locked = currentConfig && currentConfig.isLocked === 1;
+
+            body.innerHTML = scoreList.map((s, idx) => {
+                const gradeClass = s.grade ? `grade-${s.grade}` : '';
+                const statusText = {
+                    'normal': '正常',
+                    'absent': '缺考',
+                    'unrecorded': '缺录'
+                }[s.status] || s.status;
+                const statusBadgeClass = {
+                    'normal': 'bg-success',
+                    'absent': 'bg-danger',
+                    'unrecorded': 'bg-warning text-dark'
+                }[s.status] || 'bg-secondary';
+
+                const regularVal = s.regularScore != null ? s.regularScore : '';
+                const midtermVal = s.midtermScore != null ? s.midtermScore : '';
+                const finalVal = s.finalScore != null ? s.finalScore : '';
+
+                return `<tr>
+                    <td class="small">${s.studentNo || '-'}</td>
+                    <td>${s.studentName || '-'}</td>
+                    <td><input type="number" class="form-control form-control-sm score-input" 
+                         data-idx="${idx}" data-field="regular" 
+                         value="${regularVal}" min="0" max="100" step="0.5"
+                         ${locked ? 'disabled' : ''} onchange="onScoreInputChange(${idx}, 'regular', this.value)"></td>
+                    <td><input type="number" class="form-control form-control-sm score-input" 
+                         data-idx="${idx}" data-field="midterm" 
+                         value="${midtermVal}" min="0" max="100" step="0.5"
+                         ${locked ? 'disabled' : ''} onchange="onScoreInputChange(${idx}, 'midterm', this.value)"></td>
+                    <td><input type="number" class="form-control form-control-sm score-input" 
+                         data-idx="${idx}" data-field="final" 
+                         value="${finalVal}" min="0" max="100" step="0.5"
+                         ${locked ? 'disabled' : ''} onchange="onScoreInputChange(${idx}, 'final', this.value)"></td>
+                    <td><span class="badge status-badge ${statusBadgeClass}">${statusText}</span></td>
+                    <td class="fw-bold">${s.totalScore != null ? s.totalScore : '-'}</td>
+                    <td>${s.grade ? `<span class="badge ${gradeClass}">${s.grade}</span>` : '-'}</td>
+                    <td>${s.classRank != null ? '第' + s.classRank + '名' : '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editScore(${idx})" ${locked ? 'disabled' : ''}>
+                            编辑
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function onScoreInputChange(idx, field, value) {
+            const numValue = value === '' ? null : parseFloat(value);
+            if (field === 'regular') scoreList[idx].regularScore = numValue;
+            if (field === 'midterm') scoreList[idx].midtermScore = numValue;
+            if (field === 'final') scoreList[idx].finalScore = numValue;
+        }
+
+        function editScore(idx) {
+            const s = scoreList[idx];
+            editingScoreId = s.id;
+            document.getElementById('editStudentInfo').innerText = `${s.studentName} (${s.studentNo})`;
+            document.getElementById('eRegular').value = s.regularScore != null ? s.regularScore : '';
+            document.getElementById('eMidterm').value = s.midtermScore != null ? s.midtermScore : '';
+            document.getElementById('eFinal').value = s.finalScore != null ? s.finalScore : '';
+            document.getElementById('eStatus').value = s.status || 'normal';
+            document.getElementById('eRemark').value = s.remark || '';
+            new bootstrap.Modal(document.getElementById('editScoreModal')).show();
+        }
+
+        async function saveSingleScore() {
+            const courseId = document.getElementById('courseSelect').value;
+            const classId = document.getElementById('classSelect').value;
+
+            const score = {
+                id: editingScoreId,
+                courseId: parseInt(courseId),
+                classId: parseInt(classId),
+                regularScore: document.getElementById('eRegular').value ? parseFloat(document.getElementById('eRegular').value) : null,
+                midtermScore: document.getElementById('eMidterm').value ? parseFloat(document.getElementById('eMidterm').value) : null,
+                finalScore: document.getElementById('eFinal').value ? parseFloat(document.getElementById('eFinal').value) : null,
+                status: document.getElementById('eStatus').value,
+                remark: document.getElementById('eRemark').value
+            };
+
+            const s = scoreList.find(x => x.id === editingScoreId);
+            if (s) {
+                score.studentId = s.studentId;
+                score.studentName = s.studentName;
+                score.studentNo = s.studentNo;
+            }
+
+            try {
+                await api.request('/score/save', {
+                    method: 'POST',
+                    body: JSON.stringify(score)
+                });
+                api.showToast('保存成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('editScoreModal')).hide();
+                loadScores();
+            } catch (err) { }
+        }
+
+        async function saveAllScores() {
+            if (currentConfig && currentConfig.isLocked === 1) {
+                api.showToast('成绩已锁定，无法修改', 'danger');
+                return;
+            }
+
+            const courseId = document.getElementById('courseSelect').value;
+            const classId = document.getElementById('classSelect').value;
+            if (!courseId || !classId) {
+                api.showToast('请先选择课程和班级', 'warning');
+                return;
+            }
+
+            try {
+                await api.request(`/score/batchSave?courseId=${courseId}&classId=${classId}`, {
+                    method: 'POST',
+                    body: JSON.stringify(scoreList)
+                });
+                api.showToast('批量保存成功', 'success');
+                loadScores();
+            } catch (err) { }
+        }
+
+        async function initScores() {
+            const courseId = document.getElementById('courseSelect').value;
+            const classId = document.getElementById('classSelect').value;
+            if (!courseId || !classId) {
+                api.showToast('请先选择课程和班级', 'warning');
+                return;
+            }
+
+            try {
+                await api.request(`/score/init?courseId=${courseId}&classId=${classId}`, {
+                    method: 'POST'
+                });
+                api.showToast('初始化成功', 'success');
+                loadScores();
+            } catch (err) { }
+        }
+
+        function showWeightConfig() {
+            if (!currentConfig) {
+                api.showToast('请先选择课程和班级', 'warning');
+                return;
+            }
+
+            document.getElementById('wRegular').value = currentConfig.regularWeight;
+            document.getElementById('wMidterm').value = currentConfig.midtermWeight;
+            document.getElementById('wFinal').value = currentConfig.finalWeight;
+            document.getElementById('wPrecision').value = currentConfig.scorePrecision;
+            document.getElementById('gExcellent').value = currentConfig.gradeExcellent;
+            document.getElementById('gGood').value = currentConfig.gradeGood;
+            document.getElementById('gMedium').value = currentConfig.gradeMedium;
+            document.getElementById('gPass').value = currentConfig.gradePass;
+            updateWeightSum();
+            new bootstrap.Modal(document.getElementById('weightConfigModal')).show();
+        }
+
+        function updateWeightSum() {
+            const r = parseFloat(document.getElementById('wRegular').value) || 0;
+            const m = parseFloat(document.getElementById('wMidterm').value) || 0;
+            const f = parseFloat(document.getElementById('wFinal').value) || 0;
+            const sum = r + m + f;
+            document.getElementById('weightSum').innerText = sum.toFixed(2);
+
+            const alert = document.getElementById('weightSumAlert');
+            if (Math.abs(sum - 100) < 0.01) {
+                alert.className = 'alert alert-success small';
+            } else {
+                alert.className = 'alert alert-danger small';
+            }
+        }
+
+        document.addEventListener('input', (e) => {
+            if (e.target.id === 'wRegular' || e.target.id === 'wMidterm' || e.target.id === 'wFinal') {
+                updateWeightSum();
+            }
+        });
+
+        async function saveWeightConfig() {
+            const config = {
+                id: currentConfig.id,
+                courseId: currentConfig.courseId,
+                classId: currentConfig.classId,
+                regularWeight: parseFloat(document.getElementById('wRegular').value),
+                midtermWeight: parseFloat(document.getElementById('wMidterm').value),
+                finalWeight: parseFloat(document.getElementById('wFinal').value),
+                scorePrecision: parseInt(document.getElementById('wPrecision').value),
+                gradeExcellent: parseFloat(document.getElementById('gExcellent').value),
+                gradeGood: parseFloat(document.getElementById('gGood').value),
+                gradeMedium: parseFloat(document.getElementById('gMedium').value),
+                gradePass: parseFloat(document.getElementById('gPass').value)
+            };
+
+            try {
+                await api.request('/score/config/save', {
+                    method: 'POST',
+                    body: JSON.stringify(config)
+                });
+                api.showToast('权重配置保存成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('weightConfigModal')).hide();
+                loadConfig();
+                loadScores();
+            } catch (err) {
+                try {
+                    const data = await err.json();
+                    if (data && data.message) {
+                        api.showToast(data.message, 'danger');
+                    }
+                } catch (e) { }
+            }
+        }
+
+        function switchView() {
+            if (currentView === 'input') {
+                currentView = 'report';
+                document.getElementById('inputView').classList.add('d-none');
+                document.getElementById('reportView').classList.remove('d-none');
+                document.getElementById('viewToggleText').innerText = '返回录入';
+                loadStatistics();
+            } else {
+                currentView = 'input';
+                document.getElementById('reportView').classList.add('d-none');
+                document.getElementById('inputView').classList.remove('d-none');
+                document.getElementById('viewToggleText').innerText = '查看成绩单';
+            }
+        }
+
+        async function loadStatistics() {
+            const courseId = document.getElementById('courseSelect').value;
+            const classId = document.getElementById('classSelect').value;
+            if (!courseId || !classId) return;
+
+            try {
+                const stats = await api.request(`/score/statistics?courseId=${courseId}&classId=${classId}`);
+                renderStatistics(stats);
+                renderReportTable();
+            } catch (err) { }
+        }
+
+        function renderStatistics(stats) {
+            document.getElementById('statTotal').innerText = stats.totalStudents || 0;
+            document.getElementById('statMax').innerText = stats.maxScore != null ? stats.maxScore : '-';
+            document.getElementById('statMin').innerText = stats.minScore != null ? stats.minScore : '-';
+            document.getElementById('statAvg').innerText = stats.avgScore != null ? stats.avgScore : '-';
+            document.getElementById('statPassRate').innerText = stats.passRate != null ? stats.passRate + '%' : '-';
+
+            const scoreDist = stats.scoreDistribution || {};
+            const maxCount = Math.max(...Object.values(scoreDist), 1);
+            document.getElementById('scoreDistribution').innerHTML = Object.entries(scoreDist).map(([range, count]) => {
+                const pct = (count / maxCount * 100).toFixed(0);
+                return `<div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>${range}</span>
+                        <span>${count}人</span>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-primary" style="width: ${pct}%"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const gradeDist = stats.gradeDistribution || {};
+            const gradeColors = { '优': 'bg-success', '良': 'bg-info', '中': 'bg-warning', '及格': 'bg-orange', '不及格': 'bg-danger' };
+            document.getElementById('gradeDistribution').innerHTML = Object.entries(gradeDist).map(([grade, count]) => {
+                const total = Object.values(gradeDist).reduce((a, b) => a + b, 0) || 1;
+                const pct = (count / total * 100).toFixed(1);
+                const color = gradeColors[grade] || 'bg-secondary';
+                return `<div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="badge ${color}">${grade}</span>
+                        <span>${count}人 (${pct}%)</span>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar ${color}" style="width: ${pct}%"></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderReportTable() {
+            const body = document.getElementById('reportTableBody');
+            const sorted = [...scoreList].sort((a, b) => {
+                if (a.classRank != null && b.classRank != null) return a.classRank - b.classRank;
+                if (a.classRank != null) return -1;
+                if (b.classRank != null) return 1;
+                return 0;
+            });
+
+            body.innerHTML = sorted.map(s => {
+                const gradeClass = s.grade ? `grade-${s.grade}` : '';
+                const statusText = {
+                    'normal': '正常',
+                    'absent': '缺考',
+                    'unrecorded': '缺录'
+                }[s.status] || s.status;
+                const statusBadgeClass = {
+                    'normal': 'bg-success',
+                    'absent': 'bg-danger',
+                    'unrecorded': 'bg-warning text-dark'
+                }[s.status] || 'bg-secondary';
+
+                return `<tr>
+                    <td>${s.classRank != null ? '第' + s.classRank + '名' : '-'}</td>
+                    <td class="small">${s.studentNo || '-'}</td>
+                    <td>${s.studentName || '-'}</td>
+                    <td>${s.regularScore != null ? s.regularScore : '-'}</td>
+                    <td>${s.midtermScore != null ? s.midtermScore : '-'}</td>
+                    <td>${s.finalScore != null ? s.finalScore : '-'}</td>
+                    <td class="fw-bold">${s.totalScore != null ? s.totalScore : '-'}</td>
+                    <td>${s.grade ? `<span class="badge ${gradeClass}">${s.grade}</span>` : '-'}</td>
+                    <td><span class="badge status-badge ${statusBadgeClass}">${statusText}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function toggleLock() {
+            if (!currentConfig) return;
+
+            const locked = currentConfig.isLocked === 1;
+            try {
+                await api.request(`/score/config/lock?id=${currentConfig.id}&locked=${!locked}`, {
+                    method: 'POST'
+                });
+                api.showToast(locked ? '已解除锁定' : '已锁定成绩', 'success');
+                loadConfig();
+                loadScores();
+            } catch (err) { }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

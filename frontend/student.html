@@ -29,6 +29,7 @@
                     <li class="nav-link px-3" role="button" onclick="showSection('teaching')">教学内容</li>
                     <li class="nav-link px-3" role="button" onclick="showSection('experiment')">实验内容</li>
                     <li class="nav-link px-3" role="button" onclick="showSection('interact')">互动交流</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('score')">我的成绩</li>
                 </ul>
                 <div class="d-flex align-items-center">
                     <span id="userInfo" class="me-3 text-muted small"></span>
@@ -147,6 +148,53 @@
                 </div>
             </div>
         </div>
+
+        <!-- Score Section -->
+        <div id="score-section" class="section d-none">
+            <div class="card p-4 mb-4">
+                <h5 class="fw-bold mb-3">我的成绩单</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>课程名称</th>
+                                <th>平时分</th>
+                                <th>期中分</th>
+                                <th>期末分</th>
+                                <th>总评</th>
+                                <th>等级</th>
+                                <th>班级排名</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="score-list">
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card p-4">
+                        <h6 class="fw-bold mb-3">成绩概览</h6>
+                        <div id="score-summary" class="text-muted small">
+                            暂无数据
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card p-4">
+                        <h6 class="fw-bold mb-3">等级分布</h6>
+                        <div id="grade-summary" class="text-muted small">
+                            暂无数据
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -174,6 +222,7 @@
             if (id === 'teaching') loadTeaching();
             if (id === 'experiment') loadExperiments();
             if (id === 'interact') loadInteractions();
+            if (id === 'score') loadMyScores();
         }
 
         async function loadNews() {
@@ -278,6 +327,136 @@
                     </div>
                 `).join('');
             } catch (err) { }
+        }
+
+        let courseMap = {};
+
+        async function loadCourseMap() {
+            try {
+                const courses = await api.request('/test/list');
+                courseMap = {};
+                courses.forEach(c => {
+                    courseMap[c.tid] = c.ttitle;
+                });
+            } catch (err) { }
+        }
+
+        async function loadMyScores() {
+            const list = document.getElementById('score-list');
+            list.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
+
+            if (Object.keys(courseMap).length === 0) {
+                await loadCourseMap();
+            }
+
+            try {
+                const scores = await api.request(`/score/my?studentId=${session.user.uid}`);
+
+                if (scores.length === 0) {
+                    list.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">暂无成绩数据</td></tr>';
+                    document.getElementById('score-summary').innerHTML = '暂无数据';
+                    document.getElementById('grade-summary').innerHTML = '暂无数据';
+                    return;
+                }
+
+                list.innerHTML = scores.map(s => {
+                    const courseName = courseMap[s.courseId] || '未知课程';
+                    const statusText = {
+                        'normal': '正常',
+                        'absent': '缺考',
+                        'unrecorded': '缺录'
+                    }[s.status] || s.status;
+                    const statusBadgeClass = {
+                        'normal': 'bg-success',
+                        'absent': 'bg-danger',
+                        'unrecorded': 'bg-warning text-dark'
+                    }[s.status] || 'bg-secondary';
+
+                    const gradeClass = s.grade ? {
+                        '优': 'bg-success',
+                        '良': 'bg-info',
+                        '中': 'bg-warning',
+                        '及格': '',
+                        '不及格': 'bg-danger'
+                    }[s.grade] || '' : '';
+
+                    return `<tr>
+                        <td>${courseName}</td>
+                        <td>${s.regularScore != null ? s.regularScore : '-'}</td>
+                        <td>${s.midtermScore != null ? s.midtermScore : '-'}</td>
+                        <td>${s.finalScore != null ? s.finalScore : '-'}</td>
+                        <td class="fw-bold">${s.totalScore != null ? s.totalScore : '-'}</td>
+                        <td>${s.grade ? `<span class="badge ${gradeClass}">${s.grade}</span>` : '-'}</td>
+                        <td>${s.classRank != null ? '第' + s.classRank + '名' : '-'}</td>
+                        <td><span class="badge ${statusBadgeClass}">${statusText}</span></td>
+                    </tr>`;
+                }).join('');
+
+                renderScoreSummary(scores);
+                renderGradeSummary(scores);
+            } catch (err) {
+                list.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">加载失败</td></tr>';
+            }
+        }
+
+        function renderScoreSummary(scores) {
+            const validScores = scores.filter(s => s.totalScore != null && s.status === 'normal');
+            if (validScores.length === 0) {
+                document.getElementById('score-summary').innerHTML = '暂无有效成绩';
+                return;
+            }
+
+            const totalScore = validScores.reduce((sum, s) => sum + parseFloat(s.totalScore), 0);
+            const avgScore = (totalScore / validScores.length).toFixed(1);
+            const maxScore = Math.max(...validScores.map(s => parseFloat(s.totalScore))).toFixed(1);
+            const minScore = Math.min(...validScores.map(s => parseFloat(s.totalScore))).toFixed(1);
+
+            let bestRank = null;
+            let bestCourse = '';
+            validScores.forEach(s => {
+                if (s.classRank != null) {
+                    if (bestRank === null || s.classRank < bestRank) {
+                        bestRank = s.classRank;
+                        bestCourse = courseMap[s.courseId] || '未知课程';
+                    }
+                }
+            });
+
+            document.getElementById('score-summary').innerHTML = `
+                <div class="mb-2">已修课程：<strong>${validScores.length}</strong> 门</div>
+                <div class="mb-2">平均成绩：<strong class="text-primary">${avgScore}</strong> 分</div>
+                <div class="mb-2">最高成绩：<strong class="text-success">${maxScore}</strong> 分</div>
+                <div class="mb-2">最低成绩：<strong class="text-danger">${minScore}</strong> 分</div>
+                ${bestRank ? `<div>最佳排名：<strong>第${bestRank}名</strong> (${bestCourse})</div>` : ''}
+            `;
+        }
+
+        function renderGradeSummary(scores) {
+            const gradeCount = { '优': 0, '良': 0, '中': 0, '及格': 0, '不及格': 0 };
+            const validScores = scores.filter(s => s.grade && s.status === 'normal');
+
+            validScores.forEach(s => {
+                if (gradeCount.hasOwnProperty(s.grade)) {
+                    gradeCount[s.grade]++;
+                }
+            });
+
+            const total = validScores.length || 1;
+            const gradeColors = { '优': 'bg-success', '良': 'bg-info', '中': 'bg-warning', '及格': 'bg-orange', '不及格': 'bg-danger' };
+
+            document.getElementById('grade-summary').innerHTML = Object.entries(gradeCount).map(([grade, count]) => {
+                const pct = (count / total * 100).toFixed(0);
+                const color = gradeColors[grade] || 'bg-secondary';
+                return `<div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="badge ${color}">${grade}</span>
+                        <span>${count}门 (${pct}%)</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar ${color}" style="width: ${pct}%"></div>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         document.getElementById('askForm').addEventListener('submit', async (e) => {
