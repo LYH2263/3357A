@@ -166,12 +166,16 @@ public class DisciplineRecordService extends ServiceImpl<DisciplineRecordMapper,
             item.put("studentName", sr.get(0).getStudentName());
             item.put("studentNo", sr.get(0).getStudentNo());
             item.put("className", sr.get(0).getClassName());
-            item.put("totalCount", sr.size());
+            item.put("totalCount", Long.valueOf(sr.size()));
             item.put("rewardCount", sr.stream().filter(r -> "reward".equals(r.getCategory())).count());
             item.put("punishmentCount", sr.stream().filter(r -> "punishment".equals(r.getCategory())).count());
             studentDistribution.add(item);
         }
-        studentDistribution.sort((a, b) -> Long.compare((Long) b.get("totalCount"), (Long) a.get("totalCount")));
+        studentDistribution.sort((a, b) -> {
+            Long ca = (Long) a.get("totalCount");
+            Long cb = (Long) b.get("totalCount");
+            return Long.compare(cb, ca);
+        });
         result.put("studentDistribution", studentDistribution);
         result.put("totalRecords", records.size());
 
@@ -202,12 +206,18 @@ public class DisciplineRecordService extends ServiceImpl<DisciplineRecordMapper,
 
         User student = userService.getById(studentId);
         if (student != null) {
+            String newValue;
             if (hasHighPunishment) {
-                student.setYouxiuok("否");
+                newValue = "否";
             } else if (hasHighReward) {
-                student.setYouxiuok("是");
+                newValue = "是";
+            } else {
+                newValue = "否";
             }
-            userService.updateById(student);
+            if (!newValue.equals(student.getYouxiuok())) {
+                student.setYouxiuok(newValue);
+                userService.updateById(student);
+            }
         }
     }
 }
