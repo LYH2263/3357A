@@ -414,6 +414,9 @@
         }
 
         function showLoading() {
+            Object.keys(charts).forEach(id => {
+                if (charts[id]) { charts[id].dispose(); charts[id] = null; }
+            });
             document.getElementById('metricCards').innerHTML = Array(6).fill(0).map(() => `
                 <div class="col-md-6 col-lg-4 col-xl-2">
                     <div class="metric-card">
@@ -479,9 +482,17 @@
         }
 
         function getChart(id) {
-            if (!charts[id]) {
-                const dom = document.getElementById(id);
-                if (dom) charts[id] = echarts.init(dom);
+            if (charts[id]) {
+                if (charts[id].isDisposed()) {
+                    charts[id] = null;
+                } else {
+                    return charts[id];
+                }
+            }
+            const dom = document.getElementById(id);
+            if (dom) {
+                dom.innerHTML = '';
+                charts[id] = echarts.init(dom);
             }
             return charts[id];
         }
@@ -513,7 +524,7 @@
                         itemStyle: { color: colorMap[d.name] || '#4e73df' }
                     }))
                 }]
-            });
+            }, true);
         }
 
         function renderClassChart(ss) {
@@ -549,7 +560,7 @@
                         symbol: 'circle', symbolSize: 8
                     }
                 ]
-            });
+            }, true);
         }
 
         function renderInteractionChart(ins) {
@@ -582,7 +593,7 @@
                         symbol: 'circle', symbolSize: 6
                     }
                 ]
-            });
+            }, true);
         }
 
         function renderContentChart(cs) {
@@ -622,7 +633,7 @@
                         label: { show: true, formatter: '{c}%', position: 'top' }
                     }
                 ]
-            });
+            }, true);
         }
 
         function renderNewsChart(ns) {
@@ -650,7 +661,7 @@
                     },
                     barMaxWidth: 30
                 }]
-            });
+            }, true);
         }
 
         function exportChartImage(chartId, filename) {
@@ -710,17 +721,27 @@
             api.showToast('表格导出成功', 'success');
         }
 
+        function getTeacherId() {
+            const u = session.user;
+            return u.tid || u.id || u.teacherId || null;
+        }
+
         async function saveMyReport() {
             const name = document.getElementById('reportNameInput').value.trim();
             if (!name) {
                 api.showToast('请输入报表名称', 'danger');
                 return;
             }
+            const tid = getTeacherId();
+            if (!tid) {
+                api.showToast('无法获取教师身份，请重新登录', 'danger');
+                return;
+            }
             try {
                 const res = await api.request('/report/save', {
                     method: 'POST',
                     body: JSON.stringify({
-                        teacherId: session.user.tid,
+                        teacherId: tid,
                         reportName: name,
                         filter: currentFilter
                     })
@@ -735,7 +756,7 @@
 
         async function loadMyReports() {
             try {
-                const list = await api.request(`/report/my-reports?teacherId=${session.user.tid}`);
+                const list = await api.request(`/report/my-reports?teacherId=${getTeacherId()}`);
                 const container = document.getElementById('myReportsList');
                 if (list.length === 0) {
                     container.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-collection fs-1 opacity-50"></i><div class="mt-2">暂无已保存的报表</div></div>`;
@@ -759,7 +780,7 @@
 
         async function applySavedReport(id) {
             try {
-                const filter = await api.request(`/report/load/${id}?teacherId=${session.user.tid}`);
+                const filter = await api.request(`/report/load/${id}?teacherId=${getTeacherId()}`);
                 currentFilter = filter;
                 if (filter.startDate) document.getElementById('startDate').value = filter.startDate;
                 if (filter.endDate) document.getElementById('endDate').value = filter.endDate;
@@ -785,7 +806,7 @@
         async function deleteSavedReport(id) {
             if (!confirm('确定删除此报表吗？')) return;
             try {
-                await api.request(`/report/delete/${id}?teacherId=${session.user.tid}`, { method: 'DELETE' });
+                await api.request(`/report/delete/${id}?teacherId=${getTeacherId()}`, { method: 'DELETE' });
                 api.showToast('删除成功', 'success');
                 loadMyReports();
             } catch (e) {}

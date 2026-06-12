@@ -31,8 +31,14 @@ public class ReportController {
 
     @PostMapping("/save")
     public Map<String, Object> save(@RequestBody Map<String, Object> body) {
-        Integer teacherId = body.get("teacherId") != null ? ((Number) body.get("teacherId")).intValue() : null;
-        String reportName = (String) body.get("reportName");
+        Integer teacherId = null;
+        Object tidObj = body.get("teacherId");
+        if (tidObj instanceof Number) {
+            teacherId = ((Number) tidObj).intValue();
+        } else if (tidObj != null) {
+            try { teacherId = Integer.parseInt(tidObj.toString()); } catch (NumberFormatException ignored) {}
+        }
+        String reportName = body.get("reportName") != null ? body.get("reportName").toString() : null;
         ReportFilter filter = null;
         if (body.get("filter") instanceof Map) {
             filter = new ReportFilter();
@@ -41,7 +47,12 @@ public class ReportController {
             if (fm.get("endDate") != null) filter.setEndDate(java.time.LocalDate.parse(fm.get("endDate").toString()));
             if (fm.get("classIds") instanceof List) {
                 List<Integer> cids = ((List<?>) fm.get("classIds")).stream()
-                        .map(o -> ((Number) o).intValue()).collect(java.util.stream.Collectors.toList());
+                        .map(o -> {
+                            if (o instanceof Number) return ((Number) o).intValue();
+                            try { return Integer.parseInt(o.toString()); } catch (Exception e) { return null; }
+                        })
+                        .filter(java.util.Objects::nonNull)
+                        .collect(java.util.stream.Collectors.toList());
                 filter.setClassIds(cids);
             }
             if (fm.get("timezone") != null) filter.setTimezone(fm.get("timezone").toString());
