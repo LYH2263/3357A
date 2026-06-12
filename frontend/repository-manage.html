@@ -315,7 +315,11 @@
         let moveTargetId = 0;
 
         window.onload = function() {
-            api.checkSession('teacher');
+            const session = api.getSession();
+            if (!session.user || session.role !== 'teacher') {
+                location.href = 'index.html';
+                return;
+            }
             loadClasses();
             loadFolderTree();
             setupDragAndDrop();
@@ -593,7 +597,8 @@
             const visibilityType = document.getElementById('folderVisibility').value;
             const classIds = getSelectedClasses('folderClassList');
 
-            const teacherInfo = JSON.parse(sessionStorage.getItem('teacherInfo') || '{}');
+            const session = api.getSession();
+            const teacherInfo = session.user || {};
 
             fetch(api.baseUrl + '/repository/folder/create', {
                 method: 'POST',
@@ -727,7 +732,8 @@
         function uploadFiles() {
             const visibilityType = document.getElementById('fileVisibility').value;
             const classIds = getSelectedClasses('fileClassList');
-            const teacherInfo = JSON.parse(sessionStorage.getItem('teacherInfo') || '{}');
+            const session = api.getSession();
+            const teacherInfo = session.user || {};
             
             const progressBar = document.getElementById('progressBar');
             const progressDiv = document.getElementById('uploadProgress');

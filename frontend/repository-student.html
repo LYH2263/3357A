@@ -182,8 +182,12 @@
         let currentTab = 'browse';
 
         window.onload = function() {
-            api.checkSession('student');
-            const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+            const session = api.getSession();
+            if (!session.user || session.role !== 'student') {
+                location.href = 'index.html';
+                return;
+            }
+            const userInfo = session.user;
             currentStudentId = userInfo.uid;
             document.getElementById('userInfo').textContent = `${userInfo.username} (${userInfo.classname || '未分班'})`;
             loadData();

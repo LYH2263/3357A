@@ -150,22 +150,26 @@ public class RepositoryController {
     @PostMapping("/file/upload")
     public Map<String, Object> uploadFile(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(required = false) Integer folderId,
+            @RequestParam(required = false) String folderId,
             @RequestParam(required = false, defaultValue = "INHERIT") String visibilityType,
             @RequestParam(required = false) String classIds,
-            @RequestParam(required = false) Integer uploaderId,
+            @RequestParam(required = false) String uploaderId,
             @RequestParam(required = false) String uploaderName) {
         Map<String, Object> result = new HashMap<>();
         try {
+            Integer folderIdInt = parseInteger(folderId);
+            Integer uploaderIdInt = parseInteger(uploaderId);
+
             List<Integer> classIdList = null;
-            if (classIds != null && !classIds.trim().isEmpty()) {
+            if (classIds != null && !classIds.trim().isEmpty() && !"undefined".equals(classIds)) {
                 classIdList = java.util.Arrays.stream(classIds.split(","))
+                        .filter(s -> !s.trim().isEmpty() && !"undefined".equals(s.trim()))
                         .map(Integer::parseInt)
                         .collect(java.util.stream.Collectors.toList());
             }
 
             RepositoryFile uploaded = repositoryService.uploadFile(
-                    file, folderId, visibilityType, classIdList, uploaderId, uploaderName
+                    file, folderIdInt, visibilityType, classIdList, uploaderIdInt, uploaderName
             );
             result.put("success", true);
             result.put("data", uploaded);
@@ -308,5 +312,16 @@ public class RepositoryController {
             result.put("message", e.getMessage());
         }
         return result;
+    }
+
+    private Integer parseInteger(String value) {
+        if (value == null || value.trim().isEmpty() || "undefined".equals(value) || "null".equals(value)) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }
