@@ -418,6 +418,14 @@
 
             try {
                 scoreList = await api.request(`/score/list?courseId=${courseId}&classId=${classId}`);
+
+                if (scoreList.length === 0) {
+                    await api.request(`/score/init?courseId=${courseId}&classId=${classId}`, {
+                        method: 'POST'
+                    });
+                    scoreList = await api.request(`/score/list?courseId=${courseId}&classId=${classId}`);
+                }
+
                 renderScoreTable();
                 if (currentView === 'report') {
                     loadStatistics();

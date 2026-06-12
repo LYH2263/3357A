@@ -176,7 +176,7 @@ public class ScoreService extends ServiceImpl<ScoreMapper, Score> {
         List<Score> scores = this.list(new LambdaQueryWrapper<Score>()
                 .eq(Score::getCourseId, courseId)
                 .eq(Score::getClassId, classId)
-                .eq(Score::getStatus, "normal")
+                .in(Score::getStatus, "normal", "absent")
                 .isNotNull(Score::getTotalScore)
                 .orderByDesc(Score::getTotalScore));
 

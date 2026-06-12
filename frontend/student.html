@@ -37,6 +37,13 @@
         }
         .timeline-item.reward-item::after { background: #198754; }
         .timeline-item.punishment-item::after { background: #dc3545; }
+
+        .grade-badge { color: #fff !important; }
+        .grade-badge.grade-优 { background-color: #198754 !important; }
+        .grade-badge.grade-良 { background-color: #0dcaf0 !important; }
+        .grade-badge.grade-中 { background-color: #ffc107 !important; color: #333 !important; }
+        .grade-badge.grade-及格 { background-color: #fd7e14 !important; }
+        .grade-badge.grade-不及格 { background-color: #dc3545 !important; }
     </style>
 </head>
 
@@ -534,13 +541,7 @@
                         'unrecorded': 'bg-warning text-dark'
                     }[s.status] || 'bg-secondary';
 
-                    const gradeClass = s.grade ? {
-                        '优': 'bg-success',
-                        '良': 'bg-info',
-                        '中': 'bg-warning',
-                        '及格': '',
-                        '不及格': 'bg-danger'
-                    }[s.grade] || '' : '';
+                    const gradeClass = s.grade ? `grade-badge grade-${s.grade}` : '';
 
                     return `<tr>
                         <td>${courseName}</td>
@@ -604,18 +605,16 @@
             });
 
             const total = validScores.length || 1;
-            const gradeColors = { '优': 'bg-success', '良': 'bg-info', '中': 'bg-warning', '及格': 'bg-orange', '不及格': 'bg-danger' };
 
             document.getElementById('grade-summary').innerHTML = Object.entries(gradeCount).map(([grade, count]) => {
                 const pct = (count / total * 100).toFixed(0);
-                const color = gradeColors[grade] || 'bg-secondary';
                 return `<div class="mb-2">
                     <div class="d-flex justify-content-between small mb-1">
-                        <span class="badge ${color}">${grade}</span>
+                        <span class="badge grade-badge grade-${grade}">${grade}</span>
                         <span>${count}门 (${pct}%)</span>
                     </div>
                     <div class="progress" style="height: 8px;">
-                        <div class="progress-bar ${color}" style="width: ${pct}%"></div>
+                        <div class="progress-bar grade-badge grade-${grade}" style="width: ${pct}%"></div>
                     </div>
                 </div>`;
             }).join('');

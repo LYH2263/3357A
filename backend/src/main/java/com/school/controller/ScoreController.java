@@ -59,8 +59,9 @@ public class ScoreController {
     }
 
     @PostMapping("/init")
-    public void initScores(@RequestParam Integer courseId, @RequestParam Integer classId) {
+    public boolean initScores(@RequestParam Integer courseId, @RequestParam Integer classId) {
         scoreService.initScoresForClass(courseId, classId);
+        return true;
     }
 
     @GetMapping("/statistics")
