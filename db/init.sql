@@ -773,3 +773,92 @@ CREATE TABLE `saved_report` (
     KEY `idx_teacher` (`teacher_id`),
     FOREIGN KEY (`teacher_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='已保存的报表配置表';
+
+-- (30) 答疑预约时段表
+CREATE TABLE `consultation_slot` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `teacher_id` INT NOT NULL COMMENT '教师ID',
+    `teacher_name` VARCHAR(50) COMMENT '教师姓名(冗余)',
+    `slot_date` DATE NOT NULL COMMENT '预约日期',
+    `start_time` TIME NOT NULL COMMENT '开始时间',
+    `end_time` TIME NOT NULL COMMENT '结束时间',
+    `location` VARCHAR(255) COMMENT '地点或线上方式(如腾讯会议号)',
+    `location_type` VARCHAR(20) DEFAULT 'offline' COMMENT '地点类型：offline-线下，online-线上',
+    `capacity` INT NOT NULL DEFAULT 1 COMMENT '可预约人数上限',
+    `booked_count` INT NOT NULL DEFAULT 0 COMMENT '已预约人数',
+    `version` INT NOT NULL DEFAULT 0 COMMENT '版本号，用于乐观锁',
+    `status` VARCHAR(20) DEFAULT 'available' COMMENT '状态：available-可预约，full-已满，closed-已关闭，expired-已过期',
+    `remark` VARCHAR(500) COMMENT '备注说明',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_teacher` (`teacher_id`),
+    KEY `idx_date` (`slot_date`),
+    KEY `idx_status` (`status`),
+    KEY `idx_teacher_date` (`teacher_id`, `slot_date`),
+    FOREIGN KEY (`teacher_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='答疑预约时段表';
+
+-- (31) 答疑预约记录表
+CREATE TABLE `consultation_booking` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `slot_id` INT NOT NULL COMMENT '时段ID',
+    `student_id` INT NOT NULL COMMENT '学生ID',
+    `student_name` VARCHAR(50) COMMENT '学生姓名(冗余)',
+    `student_no` VARCHAR(50) COMMENT '学号(冗余)',
+    `question` TEXT COMMENT '想咨询的问题',
+    `status` VARCHAR(20) DEFAULT 'booked' COMMENT '状态：booked-已预约，cancelled-已取消，completed-已完成，no_show-爽约',
+    `cancel_time` DATETIME COMMENT '取消时间',
+    `cancel_reason` VARCHAR(255) COMMENT '取消原因',
+    `complete_time` DATETIME COMMENT '完成时间',
+    `teacher_remark` VARCHAR(500) COMMENT '教师备注',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_slot_student` (`slot_id`, `student_id`),
+    KEY `idx_student` (`student_id`),
+    KEY `idx_slot` (`slot_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_student_status` (`student_id`, `status`),
+    FOREIGN KEY (`slot_id`) REFERENCES `consultation_slot`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`uid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='答疑预约记录表';
+
+-- Seeding consultation data
+INSERT INTO `consultation_slot` (`teacher_id`, `teacher_name`, `slot_date`, `start_time`, `end_time`, `location`, `location_type`, `capacity`, `booked_count`, `status`, `remark`) VALUES 
+(1, '张老师', '2026-06-15', '14:00:00', '16:00:00', '教学楼A-301', 'offline', 5, 2, 'available', 'Java程序设计答疑'),
+(1, '张老师', '2026-06-18', '09:00:00', '11:00:00', '腾讯会议：123-456-789', 'online', 3, 3, 'full', '数据结构答疑'),
+(1, '张老师', '2026-06-20', '14:00:00', '17:00:00', '教学楼A-301', 'offline', 8, 1, 'available', '期末复习答疑'),
+(2, '李老师', '2026-06-16', '10:00:00', '12:00:00', '实验楼B-205', 'offline', 4, 0, 'available', '数据库原理答疑'),
+(2, '李老师', '2026-06-19', '15:00:00', '17:00:00', '腾讯会议：987-654-321', 'online', 6, 4, 'available', 'SQL优化专题'),
+(3, '王老师', '2026-06-17', '13:30:00', '15:30:00', '教学楼C-101', 'offline', 5, 3, 'available', '计算机网络答疑'),
+(4, '赵老师', '2026-06-21', '09:00:00', '12:00:00', '实验楼D-402', 'offline', 4, 2, 'available', '人工智能答疑'),
+(4, '赵老师', '2026-06-25', '14:00:00', '16:00:00', '腾讯会议：111-222-333', 'online', 5, 0, 'available', '机器学习专题'),
+(5, '孙老师', '2026-06-22', '10:00:00', '12:00:00', '教学楼A-201', 'offline', 6, 5, 'available', '软件工程答疑'),
+(6, '周老师', '2026-06-23', '14:00:00', '16:00:00', '实验楼C-301', 'offline', 3, 1, 'available', '网络安全答疑'),
+(7, '吴老师', '2026-06-24', '09:00:00', '11:00:00', '腾讯会议：444-555-666', 'online', 4, 0, 'available', '移动开发答疑'),
+(1, '张老师', '2026-06-10', '14:00:00', '16:00:00', '教学楼A-301', 'offline', 5, 3, 'expired', '已过期的答疑时段');
+
+INSERT INTO `consultation_booking` (`slot_id`, `student_id`, `student_name`, `student_no`, `question`, `status`, `create_time`) VALUES 
+(1, 1, '小明', 'S2021001', '老师，Java多线程那块我不太懂', 'booked', '2026-06-12 10:00:00'),
+(1, 2, '小红', 'S2021002', '想请教一下面向对象设计原则', 'booked', '2026-06-12 11:30:00'),
+(2, 3, '小王', 'S2021003', '红黑树的删除操作', 'booked', '2026-06-11 09:00:00'),
+(2, 4, '小李', 'S2021004', '图论最短路径算法', 'booked', '2026-06-11 10:00:00'),
+(2, 5, '小赵', 'S2021005', '动态规划问题', 'booked', '2026-06-11 14:00:00'),
+(3, 6, '小孙', 'S2021006', '期末复习重点', 'booked', '2026-06-12 15:00:00'),
+(5, 7, '小周', 'S2021007', 'SQL注入防护', 'booked', '2026-06-12 09:00:00'),
+(5, 8, '小吴', 'S2021008', '索引优化', 'booked', '2026-06-12 10:30:00'),
+(5, 9, '小郑', 'S2021009', '事务隔离级别', 'booked', '2026-06-12 11:00:00'),
+(5, 10, '小冯', 'S2021010', '存储过程', 'booked', '2026-06-12 14:00:00'),
+(6, 11, '小陈', 'S2021011', 'TCP三次握手', 'booked', '2026-06-12 16:00:00'),
+(6, 12, '小褚', 'S2021012', 'HTTP协议', 'booked', '2026-06-12 17:00:00'),
+(6, 13, '小卫', 'S2021013', 'DNS解析过程', 'booked', '2026-06-13 09:00:00'),
+(7, 14, '小蒋', 'S2021014', '神经网络反向传播', 'booked', '2026-06-13 10:00:00'),
+(7, 15, '小沈', 'S2021015', '梯度下降优化', 'booked', '2026-06-13 11:00:00'),
+(9, 16, '小韩', 'S2021016', '敏捷开发流程', 'booked', '2026-06-13 14:00:00'),
+(9, 17, '小杨', 'S2021017', '需求分析方法', 'booked', '2026-06-13 15:00:00'),
+(9, 18, '小朱', 'S2021018', 'UML建模', 'booked', '2026-06-13 16:00:00'),
+(9, 19, '小秦', 'S2021019', '软件测试方法', 'booked', '2026-06-13 17:00:00'),
+(9, 20, '小尤', 'S2021020', '项目管理', 'booked', '2026-06-14 09:00:00'),
+(10, 21, '小许', 'S2021021', 'XSS攻击防护', 'booked', '2026-06-14 10:00:00'),
+(12, 1, '小明', 'S2021001', '已过期的预约', 'completed', '2026-06-08 10:00:00'),
+(12, 2, '小红', 'S2021002', '已过期的预约2', 'no_show', '2026-06-08 11:00:00'),
+(12, 3, '小王', 'S2021003', '已过期的预约3', 'cancelled', '2026-06-08 09:00:00');

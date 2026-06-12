@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>答疑预约管理 - SchoolSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .nav-link {
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+            padding: 0.8rem 1rem;
+            color: #333;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: #f0f4ff;
+            color: var(--primary-color);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+
+        .stat-card {
+            border-left: 4px solid var(--primary-color);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .slot-card {
+            transition: all 0.2s;
+            border-left: 4px solid #0d6efd;
+        }
+
+        .slot-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .slot-card.status-available {
+            border-left-color: #198754;
+        }
+
+        .slot-card.status-full {
+            border-left-color: #ffc107;
+        }
+
+        .slot-card.status-expired {
+            border-left-color: #6c757d;
+            opacity: 0.7;
+        }
+
+        .slot-card.status-closed {
+            border-left-color: #dc3545;
+            opacity: 0.7;
+        }
+
+        .booking-item {
+            border-left: 3px solid #0d6efd;
+            padding-left: 12px;
+            margin-bottom: 10px;
+        }
+
+        .booking-item.status-completed {
+            border-left-color: #198754;
+        }
+
+        .booking-item.status-no_show {
+            border-left-color: #dc3545;
+        }
+
+        .date-group {
+            margin-bottom: 24px;
+        }
+
+        .date-header {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            z-index: 1;
+        }
+
+        .capacity-bar {
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .capacity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #198754, #0d6efd);
+            transition: width 0.3s;
+        }
+
+        .capacity-fill.full {
+            background: linear-gradient(90deg, #ffc107, #fd7e14);
+        }
+
+        .modal-lg {
+            max-width: 800px;
+        }
+
+        .location-badge {
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar d-flex flex-column p-3 bg-white border-end">
+        <a href="teacher.html" class="d-flex align-items-center mb-3 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="evaluation-manage.html" class="nav-link"><i class="bi bi-star-half"></i>教师评教</a></li>
+            <li><a href="calendar-manage.html" class="nav-link"><i class="bi bi-calendar3"></i>教学日历</a></li>
+            <li><a href="repository-manage.html" class="nav-link"><i class="bi bi-folder-symlink"></i>教学资料库</a></li>
+            <li><a href="album-manage.html" class="nav-link"><i class="bi bi-images"></i>班级相册</a></li>
+            <li><a href="#" class="nav-link active"><i class="bi bi-calendar-check"></i>答疑预约</a></li>
+            <li><a href="report-center.html" class="nav-link"><i class="bi bi-graph-up-arrow"></i>数据分析报表</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold"><i class="bi bi-calendar-check text-primary me-2"></i>答疑预约管理</h4>
+            <button class="btn btn-primary" onclick="showAddSlotModal()">
+                <i class="bi bi-plus-lg"></i> 发布时段
+            </button>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">总时段数</p>
+                            <h5 class="fw-bold mb-0" id="statTotalSlots">0</h5>
+                        </div>
+                        <div class="text-primary fs-3"><i class="bi bi-calendar-week"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card p-3" style="border-left-color: #198754;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">可预约时段</p>
+                            <h5 class="fw-bold mb-0 text-success" id="statAvailable">0</h5>
+                        </div>
+                        <div class="text-success fs-3"><i class="bi bi-check-circle"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card p-3" style="border-left-color: #0dcaf0;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">总预约数</p>
+                            <h5 class="fw-bold mb-0 text-info" id="statTotalBookings">0</h5>
+                        </div>
+                        <div class="text-info fs-3"><i class="bi bi-person-check"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card p-3" style="border-left-color: #fd7e14;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted small mb-1">今日时段</p>
+                            <h5 class="fw-bold mb-0 text-warning" id="statToday">0</h5>
+                        </div>
+                        <div class="text-warning fs-3"><i class="bi bi-sun"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">状态筛选</label>
+                    <select id="statusFilter" class="form-select" onchange="loadSlots()">
+                        <option value="">全部状态</option>
+                        <option value="available">可预约</option>
+                        <option value="full">已满员</option>
+                        <option value="expired">已过期</option>
+                        <option value="closed">已关闭</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">开始日期</label>
+                    <input type="date" id="startDate" class="form-control" onchange="loadSlots()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">结束日期</label>
+                    <input type="date" id="endDate" class="form-control" onchange="loadSlots()">
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-outline-primary flex-grow-1" onclick="resetFilters()">
+                        <i class="bi bi-arrow-counterclockwise"></i> 重置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <div id="slotsContainer">
+                <div class="text-center py-5 text-muted">
+                    <div class="spinner-border mb-3" role="status"></div>
+                    <p>加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="slotModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="slotModalTitle">发布答疑时段</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="slotForm">
+                        <input type="hidden" id="slotId">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">预约日期 <span class="text-danger">*</span></label>
+                            <input type="date" id="slotDate" class="form-control" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">开始时间 <span class="text-danger">*</span></label>
+                                <input type="time" id="startTime" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">结束时间 <span class="text-danger">*</span></label>
+                                <input type="time" id="endTime" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">地点类型 <span class="text-danger">*</span></label>
+                            <select id="locationType" class="form-select" onchange="toggleLocationLabel()">
+                                <option value="offline">线下</option>
+                                <option value="online">线上</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" id="locationLabel">地点 <span class="text-danger">*</span></label>
+                            <input type="text" id="location" class="form-control" placeholder="如：教学楼A-301 或 腾讯会议号" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">可预约人数上限 <span class="text-danger">*</span></label>
+                            <input type="number" id="capacity" class="form-control" min="1" value="5" required>
+                            <div class="form-text">每个时段最多可预约的学生人数</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">备注说明</label>
+                            <textarea id="remark" class="form-control" rows="3" placeholder="可填写答疑主题、注意事项等"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSlot()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bookingsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">预约名单</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="slotInfo" class="mb-3 p-3 bg-light rounded"></div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">学生预约列表</h6>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary active" onclick="filterBookings('all', this)">全部</button>
+                            <button class="btn btn-outline-primary" onclick="filterBookings('booked', this)">已预约</button>
+                            <button class="btn btn-outline-primary" onclick="filterBookings('completed', this)">已完成</button>
+                            <button class="btn btn-outline-primary" onclick="filterBookings('no_show', this)">爽约</button>
+                        </div>
+                    </div>
+                    <div id="bookingsList" style="max-height: 400px; overflow-y: auto;">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        let currentTeacherId = null;
+        let currentSlotId = null;
+        let currentBookingsFilter = 'all';
+
+        function getCurrentTeacher() {
+            const session = api.getSession();
+            if (session.user && session.role === 'teacher') {
+                currentTeacherId = session.user.tid || session.user.id;
+                return session.user;
+            }
+            currentTeacherId = 1;
+            return { tid: 1, tname: '张老师' };
+        }
+
+        function toggleLocationLabel() {
+            const type = document.getElementById('locationType').value;
+            document.getElementById('locationLabel').textContent = type === 'online' ? '线上方式 <span class="text-danger">*</span>' : '地点 <span class="text-danger">*</span>';
+        }
+
+        function loadStats() {
+            if (!currentTeacherId) return;
+            api.request(`/consultation/stats/teacher?teacherId=${currentTeacherId}`).then(stats => {
+                document.getElementById('statTotalSlots').textContent = stats.totalSlots || 0;
+                document.getElementById('statAvailable').textContent = stats.availableSlots || 0;
+                document.getElementById('statTotalBookings').textContent = stats.totalBookings || 0;
+                document.getElementById('statToday').textContent = stats.todaySlots || 0;
+            }).catch(() => {});
+        }
+
+        function loadSlots() {
+            if (!currentTeacherId) return;
+
+            const status = document.getElementById('statusFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let url = `/consultation/teacher/slots?teacherId=${currentTeacherId}`;
+            if (status) url += `&status=${status}`;
+            if (startDate) url += `&startDate=${startDate}`;
+            if (endDate) url += `&endDate=${endDate}`;
+
+            api.request(url).then(slots => {
+                renderSlots(slots);
+            }).catch(err => {
+                document.getElementById('slotsContainer').innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+                        <p>加载失败，请稍后重试</p>
+                    </div>
+                `;
+            });
+        }
+
+        function renderSlots(slots) {
+            const container = document.getElementById('slotsContainer');
+
+            if (!slots || slots.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-calendar-x fs-1 mb-3"></i>
+                        <p>暂无答疑时段</p>
+                        <button class="btn btn-primary btn-sm" onclick="showAddSlotModal()">
+                            <i class="bi bi-plus-lg"></i> 发布第一个时段
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const grouped = {};
+            slots.forEach(slot => {
+                const date = slot.slotDate;
+                if (!grouped[date]) {
+                    grouped[date] = [];
+                }
+                grouped[date].push(slot);
+            });
+
+            let html = '';
+            const dates = Object.keys(grouped).sort();
+
+            dates.forEach(date => {
+                const dateSlots = grouped[date];
+                const dateObj = new Date(date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                let dateLabel = formatDate(dateObj);
+                if (dateObj.getTime() === today.getTime()) {
+                    dateLabel += ' <span class="badge bg-primary">今天</span>';
+                } else if (dateObj < today) {
+                    dateLabel += ' <span class="badge bg-secondary">已过</span>';
+                }
+
+                html += `<div class="date-group">`;
+                html += `<div class="date-header d-flex justify-content-between align-items-center">
+                    <span>${dateLabel}</span>
+                    <span class="text-muted small">${dateSlots.length} 个时段</span>
+                </div>`;
+                html += `<div class="row g-3">`;
+
+                dateSlots.forEach(slot => {
+                    const percent = Math.round((slot.bookedCount / slot.capacity) * 100);
+                    const isFull = slot.bookedCount >= slot.capacity;
+                    const statusClass = `status-${slot.status}`;
+                    const statusText = getStatusText(slot.status);
+                    const statusBadgeClass = getStatusBadgeClass(slot.status);
+                    const locationIcon = slot.locationType === 'online' ? 'bi-laptop' : 'bi-geo-alt';
+
+                    html += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card slot-card ${statusClass} p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="badge ${statusBadgeClass}">${statusText}</span>
+                                    <span class="badge location-badge bg-outline ms-1">
+                                        <i class="bi ${locationIcon} me-1"></i>${slot.locationType === 'online' ? '线上' : '线下'}
+                                    </span>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        ${slot.status === 'available' || slot.status === 'full' ? `
+                                        <li><a class="dropdown-item" href="#" onclick="editSlot(${slot.id})">
+                                            <i class="bi bi-pencil me-2"></i>编辑
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="toggleSlot(${slot.id}, 'closed')">
+                                            <i class="bi bi-x-circle me-2"></i>关闭时段
+                                        </a></li>
+                                        ` : ''}
+                                        ${slot.status === 'closed' ? `
+                                        <li><a class="dropdown-item" href="#" onclick="toggleSlot(${slot.id}, 'available')">
+                                            <i class="bi bi-check-circle me-2"></i>重新开放
+                                        </a></li>
+                                        ` : ''}
+                                        ${slot.bookedCount === 0 ? `
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteSlot(${slot.id})">
+                                            <i class="bi bi-trash me-2"></i>删除
+                                        </a></li>
+                                        ` : ''}
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <h6 class="fw-bold mb-1">
+                                    <i class="bi bi-clock me-1 text-primary"></i>
+                                    ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}
+                                </h6>
+                                <p class="text-muted small mb-1">
+                                    <i class="bi ${locationIcon} me-1"></i>${slot.location}
+                                </p>
+                                ${slot.remark ? `<p class="text-muted small mb-2"><i class="bi bi-chat-text me-1"></i>${slot.remark}</p>` : ''}
+                            </div>
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>预约进度</span>
+                                    <span class="fw-bold ${isFull ? 'text-warning' : 'text-success'}">${slot.bookedCount}/${slot.capacity} 人</span>
+                                </div>
+                                <div class="capacity-bar">
+                                    <div class="capacity-fill ${isFull ? 'full' : ''}" style="width: ${percent}%"></div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="viewBookings(${slot.id})">
+                                    <i class="bi bi-people me-1"></i>查看名单 (${slot.bookedCount})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function getStatusText(status) {
+            const map = {
+                'available': '可预约',
+                'full': '已满员',
+                'closed': '已关闭',
+                'expired': '已过期'
+            };
+            return map[status] || status;
+        }
+
+        function getStatusBadgeClass(status) {
+            const map = {
+                'available': 'bg-success',
+                'full': 'bg-warning text-dark',
+                'closed': 'bg-danger',
+                'expired': 'bg-secondary'
+            };
+            return map[status] || 'bg-secondary';
+        }
+
+        function formatDate(date) {
+            const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const weekday = weekdays[date.getDay()];
+            return `${year}年${month}月${day}日 ${weekday}`;
+        }
+
+        function formatTime(time) {
+            if (!time) return '';
+            if (typeof time === 'string') {
+                return time.substring(0, 5);
+            }
+            return time;
+        }
+
+        function showAddSlotModal() {
+            document.getElementById('slotModalTitle').textContent = '发布答疑时段';
+            document.getElementById('slotId').value = '';
+            document.getElementById('slotForm').reset();
+            document.getElementById('capacity').value = 5;
+            document.getElementById('locationType').value = 'offline';
+            toggleLocationLabel();
+
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('slotDate').min = today;
+            document.getElementById('slotDate').value = today;
+
+            new bootstrap.Modal(document.getElementById('slotModal')).show();
+        }
+
+        function editSlot(slotId) {
+            api.request(`/consultation/slot/detail?slotId=${slotId}`).then(data => {
+                const slot = data.slot;
+                document.getElementById('slotModalTitle').textContent = '编辑答疑时段';
+                document.getElementById('slotId').value = slot.id;
+                document.getElementById('slotDate').value = slot.slotDate;
+                document.getElementById('startTime').value = formatTime(slot.startTime);
+                document.getElementById('endTime').value = formatTime(slot.endTime);
+                document.getElementById('locationType').value = slot.locationType;
+                document.getElementById('location').value = slot.location;
+                document.getElementById('capacity').value = slot.capacity;
+                document.getElementById('remark').value = slot.remark || '';
+                toggleLocationLabel();
+
+                new bootstrap.Modal(document.getElementById('slotModal')).show();
+            }).catch(err => {
+                api.showToast('加载时段信息失败', 'danger');
+            });
+        }
+
+        function saveSlot() {
+            const slotId = document.getElementById('slotId').value;
+            const slotDate = document.getElementById('slotDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const locationType = document.getElementById('locationType').value;
+            const location = document.getElementById('location').value;
+            const capacity = parseInt(document.getElementById('capacity').value);
+            const remark = document.getElementById('remark').value;
+
+            if (!slotDate || !startTime || !endTime || !location || !capacity) {
+                api.showToast('请填写所有必填项', 'warning');
+                return;
+            }
+
+            if (startTime >= endTime) {
+                api.showToast('结束时间必须晚于开始时间', 'warning');
+                return;
+            }
+
+            const teacher = getCurrentTeacher();
+
+            const data = {
+                teacherId: currentTeacherId,
+                teacherName: teacher.tname || teacher.name,
+                slotDate: slotDate,
+                startTime: startTime,
+                endTime: endTime,
+                locationType: locationType,
+                location: location,
+                capacity: capacity,
+                remark: remark
+            };
+
+            if (slotId) {
+                data.id = parseInt(slotId);
+            }
+
+            api.request('/consultation/slot/save', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            }).then(result => {
+                if (result) {
+                    api.showToast(slotId ? '修改成功' : '发布成功', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('slotModal')).hide();
+                    loadSlots();
+                    loadStats();
+                } else {
+                    api.showToast('保存失败', 'danger');
+                }
+            }).catch(err => {
+                api.showToast('保存失败：' + err.message, 'danger');
+            });
+        }
+
+        function deleteSlot(slotId) {
+            if (!confirm('确定要删除这个时段吗？删除后无法恢复。')) return;
+
+            api.request(`/consultation/slot/delete?slotId=${slotId}`, {
+                method: 'POST'
+            }).then(result => {
+                if (result) {
+                    api.showToast('删除成功', 'success');
+                    loadSlots();
+                    loadStats();
+                } else {
+                    api.showToast('删除失败', 'danger');
+                }
+            }).catch(err => {
+                api.showToast('删除失败：' + err.message, 'danger');
+            });
+        }
+
+        function toggleSlot(slotId, status) {
+            const msg = status === 'closed' ? '确定要关闭这个时段吗？关闭后学生无法预约。' : '确定要重新开放这个时段吗？';
+            if (!confirm(msg)) return;
+
+            api.request(`/consultation/slot/toggle-status?slotId=${slotId}&status=${status}`, {
+                method: 'POST'
+            }).then(result => {
+                if (result) {
+                    api.showToast('操作成功', 'success');
+                    loadSlots();
+                    loadStats();
+                } else {
+                    api.showToast('操作失败', 'danger');
+                }
+            }).catch(err => {
+                api.showToast('操作失败：' + err.message, 'danger');
+            });
+        }
+
+        function viewBookings(slotId) {
+            currentSlotId = slotId;
+            currentBookingsFilter = 'all';
+
+            api.request(`/consultation/slot/detail?slotId=${slotId}`).then(data => {
+                const slot = data.slot;
+                document.getElementById('slotInfo').innerHTML = `
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="text-muted small">日期</div>
+                            <div class="fw-bold">${formatDate(new Date(slot.slotDate))}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">时间</div>
+                            <div class="fw-bold">${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">${slot.locationType === 'online' ? '线上方式' : '地点'}</div>
+                            <div class="fw-bold"><i class="bi ${slot.locationType === 'online' ? 'bi-laptop' : 'bi-geo-alt'} me-1"></i>${slot.location}</div>
+                        </div>
+                    </div>
+                    ${slot.remark ? `<div class="mt-2"><span class="text-muted small">备注：</span>${slot.remark}</div>` : ''}
+                    <div class="mt-2">
+                        <span class="text-muted small">预约情况：</span>
+                        <span class="fw-bold">${slot.bookedCount}/${slot.capacity} 人</span>
+                    </div>
+                `;
+
+                loadBookingsList(slotId);
+                new bootstrap.Modal(document.getElementById('bookingsModal')).show();
+            }).catch(err => {
+                api.showToast('加载失败', 'danger');
+            });
+        }
+
+        function filterBookings(status, btn) {
+            currentBookingsFilter = status;
+            document.querySelectorAll('#bookingsModal .btn-group .btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadBookingsList(currentSlotId);
+        }
+
+        function loadBookingsList(slotId) {
+            let url = `/consultation/bookings/slot?slotId=${slotId}`;
+            if (currentBookingsFilter !== 'all' && currentBookingsFilter !== 'booked') {
+                url += `&status=${currentBookingsFilter}`;
+            }
+
+            api.request(url).then(bookings => {
+                renderBookingsList(bookings);
+            }).catch(err => {
+                document.getElementById('bookingsList').innerHTML = `
+                    <div class="text-center py-4 text-muted">加载失败</div>
+                `;
+            });
+        }
+
+        function renderBookingsList(bookings) {
+            const container = document.getElementById('bookingsList');
+
+            if (currentBookingsFilter === 'all') {
+                bookings = bookings.filter(b => b.status !== 'cancelled');
+            }
+
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1 mb-2"></i>
+                        <p>暂无预约记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            bookings.forEach(booking => {
+                const statusClass = `status-${booking.status}`;
+                const statusText = getBookingStatusText(booking.status);
+                const statusBadge = getBookingStatusBadge(booking.status);
+
+                html += `
+                <div class="booking-item ${statusClass} p-3 bg-white rounded border">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold mb-0">${booking.studentName}</h6>
+                                <span class="text-muted small">${booking.studentNo}</span>
+                                ${statusBadge}
+                            </div>
+                            ${booking.question ? `
+                            <p class="text-muted small mb-2">
+                                <i class="bi bi-chat-dots me-1"></i>
+                                <strong>咨询问题：</strong>${booking.question}
+                            </p>
+                            ` : ''}
+                            ${booking.teacherRemark ? `
+                            <p class="text-muted small mb-0">
+                                <i class="bi bi-sticky me-1"></i>
+                                <strong>教师备注：</strong>${booking.teacherRemark}
+                            </p>
+                            ` : ''}
+                            <div class="text-muted small mt-1">
+                                预约时间：${formatDateTime(booking.createTime)}
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            ${booking.status === 'booked' ? `
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item text-success" href="#" onclick="updateBookingStatus(${booking.id}, 'completed')">
+                                        <i class="bi bi-check-circle me-2"></i>标记已完成
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="updateBookingStatus(${booking.id}, 'no_show')">
+                                        <i class="bi bi-x-circle me-2"></i>标记爽约
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addTeacherRemark(${booking.id})">
+                                        <i class="bi bi-pencil me-2"></i>添加备注
+                                    </a></li>
+                                </ul>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function getBookingStatusText(status) {
+            const map = {
+                'booked': '已预约',
+                'cancelled': '已取消',
+                'completed': '已完成',
+                'no_show': '爽约'
+            };
+            return map[status] || status;
+        }
+
+        function getBookingStatusBadge(status) {
+            const map = {
+                'booked': 'bg-primary',
+                'cancelled': 'bg-secondary',
+                'completed': 'bg-success',
+                'no_show': 'bg-danger'
+            };
+            return `<span class="badge ${map[status] || 'bg-secondary'}">${getBookingStatusText(status)}</span>`;
+        }
+
+        function formatDateTime(datetime) {
+            if (!datetime) return '';
+            const date = new Date(datetime);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
+        }
+
+        function updateBookingStatus(bookingId, status) {
+            const msg = status === 'completed' ? '确定要标记为已完成吗？' : '确定要标记为爽约吗？';
+            if (!confirm(msg)) return;
+
+            api.request(`/consultation/booking/update-status?bookingId=${bookingId}&status=${status}`, {
+                method: 'POST'
+            }).then(result => {
+                if (result.success) {
+                    api.showToast('操作成功', 'success');
+                    loadBookingsList(currentSlotId);
+                } else {
+                    api.showToast(result.message || '操作失败', 'danger');
+                }
+            }).catch(err => {
+                api.showToast('操作失败：' + err.message, 'danger');
+            });
+        }
+
+        function addTeacherRemark(bookingId) {
+            const remark = prompt('请输入教师备注：');
+            if (remark === null) return;
+
+            api.request(`/consultation/booking/update-status?bookingId=${bookingId}&status=booked&teacherRemark=${encodeURIComponent(remark)}`, {
+                method: 'POST'
+            }).then(result => {
+                if (result.success) {
+                    api.showToast('备注已添加', 'success');
+                    loadBookingsList(currentSlotId);
+                } else {
+                    api.showToast(result.message || '操作失败', 'danger');
+                }
+            }).catch(err => {
+                api.showToast('操作失败：' + err.message, 'danger');
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            loadSlots();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            getCurrentTeacher();
+            loadStats();
+            loadSlots();
+        });
+    </script>
+</body>
+
+</html>
