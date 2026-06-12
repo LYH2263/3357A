@@ -915,3 +915,95 @@ INSERT INTO `discipline_record` (`student_id`, `student_name`, `student_no`, `cl
 
 -- Update revoke info for record id 8
 UPDATE `discipline_record` SET `revoke_reason`='经核实，该学生当时已获得安全操作授权，属于误判', `revoke_time`='2026-05-20 14:30:00', `revoke_teacher_id`=5, `revoke_teacher_name`='孙老师' WHERE `id`=8;
+
+-- (33) 书目表
+CREATE TABLE `book` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(255) NOT NULL COMMENT '书名',
+    `author` VARCHAR(200) NOT NULL COMMENT '作者',
+    `isbn` VARCHAR(50) COMMENT 'ISBN编号',
+    `category` VARCHAR(100) COMMENT '分类',
+    `total_count` INT NOT NULL DEFAULT 0 COMMENT '馆藏总数',
+    `available_count` INT NOT NULL DEFAULT 0 COMMENT '可借数量',
+    `cover_image` VARCHAR(500) COMMENT '封面图路径',
+    `description` TEXT COMMENT '书籍描述',
+    `version` INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    `borrow_count` INT NOT NULL DEFAULT 0 COMMENT '累计借阅次数(热度)',
+    `creator_id` INT COMMENT '创建人ID(教师)',
+    `creator_name` VARCHAR(50) COMMENT '创建人姓名(冗余)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_category` (`category`),
+    KEY `idx_title` (`title`(100)),
+    KEY `idx_isbn` (`isbn`),
+    KEY `idx_available` (`available_count`),
+    KEY `idx_borrow_count` (`borrow_count`),
+    FOREIGN KEY (`creator_id`) REFERENCES `teacher`(`tid`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='书目表';
+
+-- (34) 借阅记录表
+CREATE TABLE `borrow_record` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `book_id` INT NOT NULL COMMENT '书目ID',
+    `book_title` VARCHAR(255) COMMENT '书名(冗余)',
+    `student_id` INT NOT NULL COMMENT '学生ID',
+    `student_name` VARCHAR(50) COMMENT '学生姓名(冗余)',
+    `student_no` VARCHAR(50) COMMENT '学号(冗余)',
+    `borrow_time` DATETIME NOT NULL COMMENT '借阅时间',
+    `due_date` DATE NOT NULL COMMENT '应还日期',
+    `return_time` DATETIME COMMENT '归还时间',
+    `status` VARCHAR(20) DEFAULT 'borrowing' COMMENT '状态：borrowing-在借，returned-已归还，overdue-逾期',
+    `is_overdue` TINYINT DEFAULT 0 COMMENT '是否逾期：0-否，1-是',
+    `renew_count` INT DEFAULT 0 COMMENT '续借次数',
+    `remark` VARCHAR(500) COMMENT '备注',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_book_student_borrowing` (`book_id`, `student_id`, `status`),
+    KEY `idx_student` (`student_id`),
+    KEY `idx_book` (`book_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_due_date` (`due_date`),
+    KEY `idx_student_status` (`student_id`, `status`),
+    KEY `idx_overdue` (`is_overdue`),
+    FOREIGN KEY (`book_id`) REFERENCES `book`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`uid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='借阅记录表';
+
+-- Seeding book data
+INSERT INTO `book` (`title`, `author`, `isbn`, `category`, `total_count`, `available_count`, `cover_image`, `description`, `borrow_count`, `creator_id`, `creator_name`) VALUES
+('Java核心技术卷I', 'Cay S. Horstmann', '978-7-111-66434-8', '计算机/编程', 5, 3, '/uploads/book_java_core.jpg', 'Java领域经典参考书，全面深入介绍Java语言特性与核心API。', 12, 1, '张老师'),
+('算法导论', 'Thomas H. Cormen', '978-7-111-40701-0', '计算机/算法', 3, 0, '/uploads/book_algorithm.jpg', '算法领域权威教材，全面涵盖算法设计与分析。', 8, 1, '张老师'),
+('深入理解计算机系统', 'Randal E. Bryant', '978-7-111-54493-7', '计算机/系统', 4, 2, '/uploads/book_csapp.jpg', '从程序员视角理解计算机系统的经典著作。', 15, 2, '李老师'),
+('数据库系统概念', 'Abraham Silberschatz', '978-7-111-68213-4', '计算机/数据库', 4, 4, '/uploads/book_db_concept.jpg', '数据库领域经典教材，介绍数据库设计与实现原理。', 6, 2, '李老师'),
+('计算机网络：自顶向下方法', 'James F. Kurose', '978-7-111-59935-7', '计算机/网络', 5, 5, '/uploads/book_network.jpg', '从应用层开始逐层深入讲解计算机网络原理。', 9, 3, '王老师'),
+('设计模式：可复用面向对象软件的基础', 'Erich Gamma', '978-7-111-21126-5', '计算机/软件', 3, 2, '/uploads/book_design_pattern.jpg', '23种经典设计模式的权威著作。', 11, 1, '张老师'),
+('人工智能：一种现代方法', 'Stuart Russell', '978-7-111-56823-8', '计算机/AI', 4, 1, '/uploads/book_ai.jpg', '人工智能领域经典教材，全面介绍AI理论与应用。', 7, 4, '赵老师'),
+('机器学习', '周志华', '978-7-302-42328-7', '计算机/AI', 5, 4, '/uploads/book_ml_zhou.jpg', '国内机器学习经典入门教材，俗称"西瓜书"。', 10, 4, '赵老师'),
+('数据结构与算法分析', 'Mark Allen Weiss', '978-7-111-49464-6', '计算机/算法', 3, 3, '/uploads/book_data_structure.jpg', '数据结构与算法分析的经典教材。', 5, 1, '张老师'),
+('操作系统概念', 'Abraham Silberschatz', '978-7-111-60545-8', '计算机/系统', 4, 4, '/uploads/book_os_concept.jpg', '操作系统领域经典教材，深入讲解操作系统原理。', 4, 11, '褚老师'),
+('软件工程：实践者的研究方法', 'Roger S. Pressman', '978-7-111-55501-8', '计算机/软件', 3, 3, '/uploads/book_se.jpg', '软件工程领域权威教材，介绍软件开发全过程。', 3, 5, '孙老师'),
+('编译原理', 'Alfred V. Aho', '978-7-111-25121-7', '计算机/系统', 2, 2, '/uploads/book_compiler.jpg', '编译原理领域经典教材，俗称"龙书"。', 2, 10, '陈老师'),
+('线性代数及其应用', 'David C. Lay', '978-7-111-60257-6', '数学', 4, 4, '/uploads/book_linear_algebra.jpg', '线性代数经典教材，强调应用与几何直观。', 2, 1, '张老师'),
+('离散数学及其应用', 'Kenneth H. Rosen', '978-7-111-63728-6', '数学', 5, 5, '/uploads/book_discrete_math.jpg', '离散数学经典教材，涵盖计算机科学所需的数学基础。', 3, 1, '张老师'),
+('代码整洁之道', 'Robert C. Martin', '978-7-115-21748-6', '计算机/编程', 3, 1, '/uploads/book_clean_code.jpg', '编写高质量代码的实践指南。', 8, 21, '何老师'),
+('重构：改善既有代码的设计', 'Martin Fowler', '978-7-115-36939-2', '计算机/软件', 3, 2, '/uploads/book_refactoring.jpg', '代码重构领域的经典著作。', 6, 22, '吕老师'),
+('人月神话', 'Frederick P. Brooks', '978-7-115-36257-5', '计算机/管理', 2, 2, '/uploads/book_mythical_man_month.jpg', '软件工程领域经典随笔集。', 4, 21, '何老师'),
+('浪潮之巅', '吴军', '978-7-115-46301-3', '科技/历史', 5, 5, '/uploads/book_wave.jpg', '讲述科技产业发展历程的畅销书。', 1, 1, '张老师'),
+('数学之美', '吴军', '978-7-115-37355-9', '科普', 4, 4, '/uploads/book_math_beauty.jpg', '用通俗的语言介绍数学在信息技术中的应用。', 2, 1, '张老师'),
+('黑客与画家', 'Paul Graham', '978-7-115-25799-4', '计算机/文化', 3, 3, '/uploads/book_hacker_painter.jpg', '硅谷创业教父Paul Graham的文集。', 3, 24, '张三老师');
+
+-- Seeding borrow records
+INSERT INTO `borrow_record` (`book_id`, `book_title`, `student_id`, `student_name`, `student_no`, `borrow_time`, `due_date`, `return_time`, `status`, `is_overdue`) VALUES
+(1, 'Java核心技术卷I', 1, '小明', 'S2021001', '2026-06-01 10:00:00', '2026-06-15', '2026-06-12 15:30:00', 'returned', 0),
+(1, 'Java核心技术卷I', 2, '小红', 'S2021002', '2026-06-05 14:00:00', '2026-06-19', NULL, 'borrowing', 0),
+(1, 'Java核心技术卷I', 3, '小王', 'S2021003', '2026-06-08 09:00:00', '2026-06-22', NULL, 'borrowing', 0),
+(2, '算法导论', 1, '小明', 'S2021001', '2026-06-03 11:00:00', '2026-06-17', NULL, 'borrowing', 0),
+(2, '算法导论', 4, '小李', 'S2021004', '2026-06-04 13:00:00', '2026-06-18', '2026-06-10 10:00:00', 'returned', 0),
+(2, '算法导论', 5, '小赵', 'S2021005', '2026-06-06 10:00:00', '2026-06-20', NULL, 'borrowing', 0),
+(3, '深入理解计算机系统', 1, '小明', 'S2021001', '2026-05-20 10:00:00', '2026-06-03', '2026-06-02 14:00:00', 'returned', 0),
+(3, '深入理解计算机系统', 2, '小红', 'S2021002', '2026-06-02 09:00:00', '2026-06-16', NULL, 'borrowing', 0),
+(7, '人工智能：一种现代方法', 14, '小蒋', 'S2021014', '2026-06-01 14:00:00', '2026-06-15', NULL, 'borrowing', 0),
+(7, '人工智能：一种现代方法', 7, '小周', 'S2021007', '2026-06-03 10:00:00', '2026-06-17', NULL, 'borrowing', 0),
+(7, '人工智能：一种现代方法', 15, '小沈', 'S2021015', '2026-06-05 11:00:00', '2026-06-19', NULL, 'borrowing', 0),
+(15, '代码整洁之道', 1, '小明', 'S2021001', '2026-05-15 10:00:00', '2026-05-29', NULL, 'overdue', 1),
+(16, '重构：改善既有代码的设计', 2, '小红', 'S2021002', '2026-05-20 14:00:00', '2026-06-03', NULL, 'overdue', 1);

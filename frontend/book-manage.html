@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书借阅管理 - SchoolSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar { width: 250px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+        .main-content { margin-left: 250px; padding: 2rem; }
+        .nav-link { border-radius: 0.5rem; margin: 0.2rem 0; padding: 0.8rem 1rem; color: #333; }
+        .nav-link:hover, .nav-link.active { background: #f0f4ff; color: var(--primary-color); }
+        .nav-link i { margin-right: 10px; }
+        .stat-card { border-left: 4px solid var(--primary-color); transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .book-card { transition: all 0.2s; }
+        .book-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .book-cover { width: 100%; height: 180px; object-fit: cover; border-radius: 4px; }
+        .book-cover-placeholder { width: 100%; height: 180px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 2rem; border-radius: 4px; }
+        .badge-overdue { background: #dc3545; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .record-row.overdue { background: #fff5f5; }
+        .tab-content { padding-top: 1rem; }
+        .hot-rank { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 50%; background: #e9ecef; font-weight: bold; font-size: 0.8rem; }
+        .hot-rank.top1 { background: #ffd700; color: #8b6914; }
+        .hot-rank.top2 { background: #c0c0c0; color: #555; }
+        .hot-rank.top3 { background: #cd7f32; color: #fff; }
+        .progress-hot { height: 6px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="teacher.html" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="discipline-manage.html" class="nav-link"><i class="bi bi-award"></i>奖惩管理</a></li>
+            <li><a href="evaluation-manage.html" class="nav-link"><i class="bi bi-star-half"></i>教师评教</a></li>
+            <li><a href="calendar-manage.html" class="nav-link"><i class="bi bi-calendar3"></i>教学日历</a></li>
+            <li><a href="repository-manage.html" class="nav-link"><i class="bi bi-folder-symlink"></i>教学资料库</a></li>
+            <li><a href="album-manage.html" class="nav-link"><i class="bi bi-images"></i>班级相册</a></li>
+            <li><a href="consultation-manage.html" class="nav-link"><i class="bi bi-calendar-check"></i>答疑预约</a></li>
+            <li><a href="book-manage.html" class="nav-link active"><i class="bi bi-book-half"></i>图书借阅</a></li>
+            <li><a href="report-center.html" class="nav-link"><i class="bi bi-graph-up-arrow"></i>数据分析报表</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold"><i class="bi bi-book-half text-primary me-2"></i>图书借阅管理</h4>
+            <div>
+                <button class="btn btn-outline-primary me-2" onclick="refreshAll()"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
+                <button class="btn btn-primary" onclick="showAddBookModal()"><i class="bi bi-plus-lg"></i> 新增书目</button>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">馆藏总数</h6>
+                            <h3 class="fw-bold text-primary" id="statTotalBooks">0</h3>
+                        </div>
+                        <i class="bi bi-book text-primary fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card p-4" style="border-left-color: #198754;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">在借数量</h6>
+                            <h3 class="fw-bold text-success" id="statTotalBorrowed">0</h3>
+                        </div>
+                        <i class="bi bi-arrow-up-circle text-success fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card p-4" style="border-left-color: #dc3545;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">逾期数量</h6>
+                            <h3 class="fw-bold text-danger" id="statOverdue">0</h3>
+                        </div>
+                        <i class="bi bi-exclamation-triangle text-danger fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card p-4" style="border-left-color: #6c757d;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">累计借阅</h6>
+                            <h3 class="fw-bold text-secondary" id="statTotalRecords">0</h3>
+                        </div>
+                        <i class="bi bi-journal-check text-secondary fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs" id="bookTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="books-tab" data-bs-toggle="tab" data-bs-target="#books-tab-pane" type="button">书目管理</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="records-tab" data-bs-toggle="tab" data-bs-target="#records-tab-pane" type="button">借阅流水</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="hot-tab" data-bs-toggle="tab" data-bs-target="#hot-tab-pane" type="button">借阅热度</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="bookTabsContent">
+            <div class="tab-pane fade show active" id="books-tab-pane" role="tabpanel">
+                <div class="card p-4 mt-3">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="bookSearch" placeholder="搜索书名、作者、ISBN..." onkeyup="searchBooks()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="categoryFilter" onchange="searchBooks()">
+                                <option value="">全部分类</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5 text-end">
+                            <button class="btn btn-outline-secondary me-2" onclick="clearBookFilter()">重置</button>
+                        </div>
+                    </div>
+                    <div id="booksList" class="row g-4"></div>
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center" id="bookPagination"></ul>
+                    </nav>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="records-tab-pane" role="tabpanel">
+                <div class="card p-4 mt-3">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="recordSearch" placeholder="搜索学生姓名、学号、书名、ISBN..." onkeyup="searchRecords()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="statusFilter" onchange="searchRecords()">
+                                <option value="all">全部状态</option>
+                                <option value="borrowing">在借中</option>
+                                <option value="overdue">已逾期</option>
+                                <option value="returned">已归还</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5 text-end">
+                            <button class="btn btn-outline-warning me-2" onclick="updateOverdue()"><i class="bi bi-exclamation-triangle"></i> 更新逾期状态</button>
+                            <button class="btn btn-outline-secondary me-2" onclick="clearRecordFilter()">重置</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>书籍</th>
+                                    <th>学生</th>
+                                    <th>班级</th>
+                                    <th>借阅时间</th>
+                                    <th>应还日期</th>
+                                    <th>归还时间</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody"></tbody>
+                        </table>
+                    </div>
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center" id="recordPagination"></ul>
+                    </nav>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="hot-tab-pane" role="tabpanel">
+                <div class="card p-4 mt-3">
+                    <h5 class="mb-4"><i class="bi bi-fire text-warning me-2"></i>借阅热度排行 TOP 10</h5>
+                    <div id="hotBooksList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bookModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bookModalTitle">新增书目</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bookForm">
+                        <input type="hidden" id="bookId">
+                        <div class="row g-3">
+                            <div class="col-md-12 text-center mb-3">
+                                <div id="coverPreview" class="mx-auto mb-2" style="width: 120px; height: 160px; border: 2px dashed #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="document.getElementById('coverInput').click()">
+                                    <div id="coverPlaceholder" class="text-muted">
+                                        <i class="bi bi-cloud-upload fs-2"></i>
+                                        <div class="small">点击上传封面</div>
+                                    </div>
+                                    <img id="coverImage" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: none;">
+                                </div>
+                                <input type="file" id="coverInput" accept="image/*" style="display: none;" onchange="uploadCover(event)">
+                                <input type="hidden" id="coverImagePath">
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">书名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="bookTitle" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">分类 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="bookCategory" required placeholder="如：计算机/编程">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">作者 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="bookAuthor" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">ISBN</label>
+                                <input type="text" class="form-control" id="bookIsbn" placeholder="如：978-7-111-xxxxxx">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">馆藏总数 <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="bookTotalCount" min="1" required>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">书籍描述</label>
+                                <textarea class="form-control" id="bookDescription" rows="3" placeholder="简要介绍书籍内容..."></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveBook()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bookDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">书目详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="bookDetailContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        let currentBookPage = 1;
+        let currentRecordPage = 1;
+        const pageSize = 10;
+
+        let currentBookKeyword = '';
+        let currentBookCategory = '';
+        let currentRecordKeyword = '';
+        let currentRecordStatus = 'all';
+
+        const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+        const bookDetailModal = new bootstrap.Modal(document.getElementById('bookDetailModal'));
+
+        function init() {
+            api.checkTeacherLogin();
+            loadStatistics();
+            loadCategories();
+            loadBooks();
+            loadRecords();
+            loadHotBooks();
+        }
+
+        function refreshAll() {
+            loadStatistics();
+            loadBooks();
+            loadRecords();
+            loadHotBooks();
+        }
+
+        function loadStatistics() {
+            api.get('/api/book/statistics', function(res) {
+                if (res.success) {
+                    document.getElementById('statTotalBooks').textContent = res.data.totalBooks;
+                    document.getElementById('statTotalBorrowed').textContent = res.data.totalBorrowed;
+                    document.getElementById('statOverdue').textContent = res.data.overdueCount;
+                    document.getElementById('statTotalRecords').textContent = res.data.totalRecords;
+                }
+            });
+        }
+
+        function loadCategories() {
+            api.get('/api/book/categories', function(res) {
+                if (res.success && res.data) {
+                    const select = document.getElementById('categoryFilter');
+                    select.innerHTML = '<option value="">全部分类</option>';
+                    res.data.forEach(cat => {
+                        select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                    });
+                }
+            });
+        }
+
+        function searchBooks() {
+            currentBookKeyword = document.getElementById('bookSearch').value.trim();
+            currentBookCategory = document.getElementById('categoryFilter').value;
+            currentBookPage = 1;
+            loadBooks();
+        }
+
+        function clearBookFilter() {
+            document.getElementById('bookSearch').value = '';
+            document.getElementById('categoryFilter').value = '';
+            currentBookKeyword = '';
+            currentBookCategory = '';
+            currentBookPage = 1;
+            loadBooks();
+        }
+
+        function loadBooks() {
+            const params = new URLSearchParams({
+                pageNum: currentBookPage,
+                pageSize: pageSize
+            });
+            if (currentBookKeyword) params.append('keyword', currentBookKeyword);
+            if (currentBookCategory) params.append('category', currentBookCategory);
+
+            api.get('/api/book/list?' + params.toString(), function(res) {
+                if (res.success) {
+                    renderBooks(res.data.records);
+                    renderPagination('bookPagination', res.data.current, res.data.pages, function(page) {
+                        currentBookPage = page;
+                        loadBooks();
+                    });
+                }
+            });
+        }
+
+        function renderBooks(books) {
+            const container = document.getElementById('booksList');
+            if (!books || books.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center py-5 text-muted"><i class="bi bi-book fs-1 mb-3 d-block opacity-50"></i>暂无书目数据</div>';
+                return;
+            }
+
+            container.innerHTML = books.map(book => {
+                const borrowRate = book.totalCount > 0 ? Math.round((book.borrowCount / book.totalCount) * 100) : 0;
+                return `
+                    <div class="col-md-3">
+                        <div class="card book-card h-100">
+                            <div class="p-3">
+                                ${book.coverImage ? 
+                                    `<img src="${book.coverImage}" class="book-cover mb-3" alt="${book.title}">` :
+                                    `<div class="book-cover-placeholder mb-3"><i class="bi bi-book"></i></div>`
+                                }
+                                <h6 class="fw-bold mb-1 text-truncate" title="${book.title}">${book.title}</h6>
+                                <p class="small text-muted mb-2 text-truncate">${book.author}</p>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-secondary">${book.category}</span>
+                                    <span class="small text-muted">借阅 ${book.borrowCount} 次</span>
+                                </div>
+                                <div class="progress progress-hot mb-2">
+                                    <div class="progress-bar bg-primary" style="width: ${Math.min(borrowRate, 100)}%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="fw-bold ${book.availableCount > 0 ? 'text-success' : 'text-danger'}">
+                                            ${book.availableCount > 0 ? `可借 ${book.availableCount}/${book.totalCount}` : '已借完'}
+                                        </span>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" onclick="viewBookDetail(${book.id})"><i class="bi bi-eye me-2"></i>查看详情</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="editBook(${book.id})"><i class="bi bi-pencil me-2"></i>编辑</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="viewBorrowRecords(${book.id})"><i class="bi bi-journal-text me-2"></i>借阅记录</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteBook(${book.id})"><i class="bi bi-trash me-2"></i>删除</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showAddBookModal() {
+            document.getElementById('bookModalTitle').textContent = '新增书目';
+            document.getElementById('bookForm').reset();
+            document.getElementById('bookId').value = '';
+            document.getElementById('coverImagePath').value = '';
+            document.getElementById('coverImage').style.display = 'none';
+            document.getElementById('coverPlaceholder').style.display = 'block';
+            bookModal.show();
+        }
+
+        function editBook(bookId) {
+            api.get('/api/book/' + bookId, function(res) {
+                if (res.success && res.data) {
+                    const book = res.data;
+                    document.getElementById('bookModalTitle').textContent = '编辑书目';
+                    document.getElementById('bookId').value = book.id;
+                    document.getElementById('bookTitle').value = book.title;
+                    document.getElementById('bookAuthor').value = book.author;
+                    document.getElementById('bookIsbn').value = book.isbn || '';
+                    document.getElementById('bookCategory').value = book.category;
+                    document.getElementById('bookTotalCount').value = book.totalCount;
+                    document.getElementById('bookDescription').value = book.description || '';
+                    document.getElementById('coverImagePath').value = book.coverImage || '';
+                    
+                    if (book.coverImage) {
+                        document.getElementById('coverImage').src = book.coverImage;
+                        document.getElementById('coverImage').style.display = 'block';
+                        document.getElementById('coverPlaceholder').style.display = 'none';
+                    } else {
+                        document.getElementById('coverImage').style.display = 'none';
+                        document.getElementById('coverPlaceholder').style.display = 'block';
+                    }
+                    
+                    bookModal.show();
+                }
+            });
+        }
+
+        function uploadCover(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            api.upload('/api/book/cover/upload', formData, function(res) {
+                if (res.success) {
+                    document.getElementById('coverImagePath').value = res.data;
+                    document.getElementById('coverImage').src = res.data;
+                    document.getElementById('coverImage').style.display = 'block';
+                    document.getElementById('coverPlaceholder').style.display = 'none';
+                } else {
+                    alert(res.message || '上传失败');
+                }
+            });
+        }
+
+        function saveBook() {
+            const title = document.getElementById('bookTitle').value.trim();
+            const author = document.getElementById('bookAuthor').value.trim();
+            const category = document.getElementById('bookCategory').value.trim();
+            const totalCount = parseInt(document.getElementById('bookTotalCount').value);
+
+            if (!title || !author || !category || !totalCount) {
+                alert('请填写必填项');
+                return;
+            }
+
+            const teacher = api.getTeacherInfo();
+            const data = {
+                title: title,
+                author: author,
+                isbn: document.getElementById('bookIsbn').value.trim(),
+                category: category,
+                totalCount: totalCount,
+                description: document.getElementById('bookDescription').value.trim(),
+                coverImage: document.getElementById('coverImagePath').value,
+                creatorId: teacher ? teacher.tid : 1,
+                creatorName: teacher ? teacher.tname : '管理员'
+            };
+
+            const bookId = document.getElementById('bookId').value;
+            if (bookId) {
+                data.id = parseInt(bookId);
+            }
+
+            api.post('/api/book/save', data, function(res) {
+                if (res.success) {
+                    alert('保存成功');
+                    bookModal.hide();
+                    loadBooks();
+                    loadStatistics();
+                    loadCategories();
+                } else {
+                    alert(res.message || '保存失败');
+                }
+            });
+        }
+
+        function viewBookDetail(bookId) {
+            api.get('/api/book/' + bookId, function(res) {
+                if (res.success && res.data) {
+                    const book = res.data;
+                    const content = document.getElementById('bookDetailContent');
+                    content.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                ${book.coverImage ? 
+                                    `<img src="${book.coverImage}" class="img-fluid rounded" style="max-height: 300px;" alt="${book.title}">` :
+                                    `<div class="d-flex align-items-center justify-content-center bg-primary text-white rounded" style="height: 300px;"><i class="bi bi-book fs-1"></i></div>`
+                                }
+                            </div>
+                            <div class="col-md-8">
+                                <h4 class="fw-bold mb-3">${book.title}</h4>
+                                <table class="table table-borderless">
+                                    <tr><td style="width: 100px;" class="text-muted">作者</td><td>${book.author}</td></tr>
+                                    <tr><td class="text-muted">ISBN</td><td>${book.isbn || '-'}</td></tr>
+                                    <tr><td class="text-muted">分类</td><td><span class="badge bg-secondary">${book.category}</span></td></tr>
+                                    <tr><td class="text-muted">馆藏总数</td><td>${book.totalCount} 册</td></tr>
+                                    <tr><td class="text-muted">可借数量</td><td><span class="fw-bold ${book.availableCount > 0 ? 'text-success' : 'text-danger'}">${book.availableCount} 册</span></td></tr>
+                                    <tr><td class="text-muted">累计借阅</td><td>${book.borrowCount} 次</td></tr>
+                                    <tr><td class="text-muted">创建人</td><td>${book.creatorName || '-'}</td></tr>
+                                </table>
+                                ${book.description ? `<div class="mt-3"><h6 class="fw-bold">书籍描述</h6><p class="text-muted">${book.description}</p></div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    bookDetailModal.show();
+                }
+            });
+        }
+
+        function deleteBook(bookId) {
+            if (!confirm('确定要删除该书吗？删除后将无法恢复。')) return;
+            api.post('/api/book/delete/' + bookId, {}, function(res) {
+                if (res.success) {
+                    alert('删除成功');
+                    loadBooks();
+                    loadStatistics();
+                } else {
+                    alert(res.message || '删除失败');
+                }
+            });
+        }
+
+        function viewBorrowRecords(bookId) {
+            api.get('/api/book/record/book/' + bookId, function(res) {
+                if (res.success && res.data) {
+                    const records = res.data;
+                    const content = document.getElementById('bookDetailContent');
+                    content.innerHTML = `
+                        <h5 class="fw-bold mb-3">借阅记录</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>学生</th>
+                                        <th>班级</th>
+                                        <th>借阅时间</th>
+                                        <th>应还日期</th>
+                                        <th>归还时间</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${records.length === 0 ? '<tr><td colspan="6" class="text-center text-muted py-4">暂无借阅记录</td></tr>' : 
+                                    records.map(r => `
+                                        <tr class="${r.isOverdue ? 'overdue' : ''}">
+                                            <td>${r.studentName} (${r.studentNo})</td>
+                                            <td>${r.className || '-'}</td>
+                                            <td>${formatDateTime(r.borrowTime)}</td>
+                                            <td class="${r.isOverdue ? 'text-danger fw-bold' : ''}">${formatDate(r.dueDate)}</td>
+                                            <td>${r.returnTime ? formatDateTime(r.returnTime) : '-'}</td>
+                                            <td>${getStatusBadge(r.status, r.isOverdue)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    bookDetailModal.show();
+                }
+            });
+        }
+
+        function searchRecords() {
+            currentRecordKeyword = document.getElementById('recordSearch').value.trim();
+            currentRecordStatus = document.getElementById('statusFilter').value;
+            currentRecordPage = 1;
+            loadRecords();
+        }
+
+        function clearRecordFilter() {
+            document.getElementById('recordSearch').value = '';
+            document.getElementById('statusFilter').value = 'all';
+            currentRecordKeyword = '';
+            currentRecordStatus = 'all';
+            currentRecordPage = 1;
+            loadRecords();
+        }
+
+        function loadRecords() {
+            const params = new URLSearchParams({
+                pageNum: currentRecordPage,
+                pageSize: pageSize,
+                status: currentRecordStatus
+            });
+            if (currentRecordKeyword) params.append('keyword', currentRecordKeyword);
+
+            api.get('/api/book/record/list?' + params.toString(), function(res) {
+                if (res.success) {
+                    renderRecords(res.data.records);
+                    renderPagination('recordPagination', res.data.current, res.data.pages, function(page) {
+                        currentRecordPage = page;
+                        loadRecords();
+                    });
+                }
+            });
+        }
+
+        function renderRecords(records) {
+            const tbody = document.getElementById('recordsTableBody');
+            if (!records || records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">暂无借阅记录</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = records.map(r => `
+                <tr class="record-row ${r.isOverdue ? 'overdue' : ''}">
+                    <td>${r.id}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            ${r.bookCover ? `<img src="${r.bookCover}" class="me-2" style="width: 30px; height: 40px; object-fit: cover;">` : `<i class="bi bi-book me-2 text-muted"></i>`}
+                            <div>
+                                <div class="fw-bold">${r.bookTitle}</div>
+                                <div class="small text-muted">${r.author || ''}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${r.studentName} (${r.studentNo})</td>
+                    <td>${r.className || '-'}</td>
+                    <td>${formatDateTime(r.borrowTime)}</td>
+                    <td class="${r.isOverdue ? 'text-danger fw-bold' : ''}">${formatDate(r.dueDate)}</td>
+                    <td>${r.returnTime ? formatDateTime(r.returnTime) : '-'}</td>
+                    <td>${getStatusBadge(r.status, r.isOverdue)}</td>
+                    <td>
+                        ${(r.status === 'borrowing' || r.status === 'overdue') ? 
+                            `<button class="btn btn-sm btn-success" onclick="confirmReturn(${r.id}, '${r.bookTitle}', '${r.studentName}')">确认归还</button>` :
+                            `<span class="text-muted">-</span>`
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function confirmReturn(recordId, bookTitle, studentName) {
+            if (!confirm(`确认 ${studentName} 已归还《${bookTitle}》吗？`)) return;
+            api.post('/api/book/return/' + recordId, {}, function(res) {
+                if (res.success) {
+                    alert('归还成功');
+                    loadRecords();
+                    loadBooks();
+                    loadStatistics();
+                } else {
+                    alert(res.message || '归还失败');
+                }
+            });
+        }
+
+        function updateOverdue() {
+            api.post('/api/book/updateOverdue', {}, function(res) {
+                if (res.success) {
+                    alert(res.message || '更新成功');
+                    loadRecords();
+                    loadStatistics();
+                } else {
+                    alert(res.message || '更新失败');
+                }
+            });
+        }
+
+        function loadHotBooks() {
+            api.get('/api/book/hot?limit=10', function(res) {
+                if (res.success && res.data) {
+                    renderHotBooks(res.data);
+                }
+            });
+        }
+
+        function renderHotBooks(books) {
+            const container = document.getElementById('hotBooksList');
+            if (!books || books.length === 0) {
+                container.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-fire fs-1 mb-3 d-block opacity-50"></i>暂无借阅数据</div>';
+                return;
+            }
+
+            container.innerHTML = books.map((book, index) => {
+                const rankClass = index === 0 ? 'top1' : index === 1 ? 'top2' : index === 2 ? 'top3' : '';
+                const maxBorrow = Math.max(...books.map(b => b.borrowCount));
+                const percentage = maxBorrow > 0 ? Math.round((book.borrowCount / maxBorrow) * 100) : 0;
+                
+                return `
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center">
+                                <span class="hot-rank ${rankClass} me-3">${index + 1}</span>
+                                ${book.coverImage ? 
+                                    `<img src="${book.coverImage}" class="me-3" style="width: 50px; height: 70px; object-fit: cover; border-radius: 4px;">` :
+                                    `<div class="me-3 d-flex align-items-center justify-content-center bg-light rounded" style="width: 50px; height: 70px;"><i class="bi bi-book text-muted"></i></div>`
+                                }
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="fw-bold mb-1">${book.title}</h6>
+                                            <p class="small text-muted mb-0">${book.author} · ${book.category}</p>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold text-primary">${book.borrowCount} 次借阅</div>
+                                            <div class="small text-muted">可借 ${book.availableCount}/${book.totalCount}</div>
+                                        </div>
+                                    </div>
+                                    <div class="progress mt-2" style="height: 4px;">
+                                        <div class="progress-bar bg-warning" style="width: ${percentage}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusBadge(status, isOverdue) {
+            if (isOverdue || status === 'overdue') {
+                return '<span class="badge badge-overdue">逾期</span>';
+            }
+            switch(status) {
+                case 'borrowing': return '<span class="badge bg-primary">在借中</span>';
+                case 'returned': return '<span class="badge bg-success">已归还</span>';
+                default: return '<span class="badge bg-secondary">' + status + '</span>';
+            }
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('zh-CN');
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleString('zh-CN');
+        }
+
+        function renderPagination(containerId, currentPage, totalPages, onPageChange) {
+            const container = document.getElementById(containerId);
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage > 1 ? onPageChange.name + '(' + (currentPage - 1) + ')' : ''}">上一页</a></li>`;
+            
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+            
+            if (startPage > 1) {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(1)">1</a></li>`;
+                if (startPage > 2) {
+                    html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(${i})">${i}</a></li>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                }
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(${totalPages})">${totalPages}</a></li>`;
+            }
+            
+            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage < totalPages ? onPageChange.name + '(' + (currentPage + 1) + ')' : ''}">下一页</a></li>`;
+            
+            container.innerHTML = html;
+        }
+
+        init();
+    </script>
+</body>
+</html>
