@@ -117,7 +117,11 @@ public class CalendarController {
 
         Object isArchived = params.get("isArchived");
         if (isArchived != null) {
-            event.setIsArchived(((Number) isArchived).intValue());
+            if (isArchived instanceof Boolean) {
+                event.setIsArchived(((Boolean) isArchived) ? 1 : 0);
+            } else if (isArchived instanceof Number) {
+                event.setIsArchived(((Number) isArchived).intValue());
+            }
         }
 
         @SuppressWarnings("unchecked")

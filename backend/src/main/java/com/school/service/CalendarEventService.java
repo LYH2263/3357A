@@ -26,13 +26,17 @@ public class CalendarEventService extends ServiceImpl<CalendarEventMapper, Calen
     private ClassesService classesService;
 
     public List<Map<String, Object>> listAllWithClasses() {
+        archivePastEvents();
         List<CalendarEvent> events = this.list(new LambdaQueryWrapper<CalendarEvent>()
+                .eq(CalendarEvent::getIsArchived, 0)
                 .orderByAsc(CalendarEvent::getStartTime));
         return enrichWithClasses(events);
     }
 
     public List<Map<String, Object>> listByTimeRange(LocalDateTime start, LocalDateTime end) {
+        archivePastEvents();
         List<CalendarEvent> events = this.list(new LambdaQueryWrapper<CalendarEvent>()
+                .eq(CalendarEvent::getIsArchived, 0)
                 .le(CalendarEvent::getStartTime, end)
                 .ge(CalendarEvent::getEndTime, start)
                 .orderByAsc(CalendarEvent::getStartTime));
@@ -40,7 +44,9 @@ public class CalendarEventService extends ServiceImpl<CalendarEventMapper, Calen
     }
 
     public List<Map<String, Object>> listByTimeRangeAndType(LocalDateTime start, LocalDateTime end, String eventType) {
+        archivePastEvents();
         LambdaQueryWrapper<CalendarEvent> wrapper = new LambdaQueryWrapper<CalendarEvent>()
+                .eq(CalendarEvent::getIsArchived, 0)
                 .le(CalendarEvent::getStartTime, end)
                 .ge(CalendarEvent::getEndTime, start);
         if (eventType != null && !eventType.isEmpty()) {
@@ -52,6 +58,7 @@ public class CalendarEventService extends ServiceImpl<CalendarEventMapper, Calen
     }
 
     public List<Map<String, Object>> listByClassId(Integer classId, LocalDateTime start, LocalDateTime end) {
+        archivePastEvents();
         List<CalendarEventClass> eventClasses = eventClassMapper.selectList(
                 new LambdaQueryWrapper<CalendarEventClass>()
                         .eq(CalendarEventClass::getClassId, classId));
@@ -63,6 +70,7 @@ public class CalendarEventService extends ServiceImpl<CalendarEventMapper, Calen
                 .collect(Collectors.toList());
 
         LambdaQueryWrapper<CalendarEvent> wrapper = new LambdaQueryWrapper<CalendarEvent>()
+                .eq(CalendarEvent::getIsArchived, 0)
                 .in(CalendarEvent::getId, eventIds)
                 .le(CalendarEvent::getStartTime, end)
                 .ge(CalendarEvent::getEndTime, start)
@@ -72,6 +80,7 @@ public class CalendarEventService extends ServiceImpl<CalendarEventMapper, Calen
     }
 
     public List<Map<String, Object>> listUpcomingByClassId(Integer classId, Integer limit) {
+        archivePastEvents();
         List<CalendarEventClass> eventClasses = eventClassMapper.selectList(
                 new LambdaQueryWrapper<CalendarEventClass>()
                         .eq(CalendarEventClass::getClassId, classId));
@@ -161,6 +170,7 @@ public class CalendarEventService extends ServiceImpl<CalendarEventMapper, Calen
     }
 
     public String exportICal(Integer classId) {
+        archivePastEvents();
         List<CalendarEventClass> eventClasses = eventClassMapper.selectList(
                 new LambdaQueryWrapper<CalendarEventClass>()
                         .eq(CalendarEventClass::getClassId, classId));

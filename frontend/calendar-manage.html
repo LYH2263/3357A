@@ -798,7 +798,7 @@
             try {
                 if (editingEventId) {
                     body.id = editingEventId;
-                    body.isArchived = false;
+                    body.isArchived = 0;
                     await api.request('/calendar/event/update', { method: 'POST', body: JSON.stringify(body) });
                     api.showToast('事件更新成功', 'success');
                 } else {
