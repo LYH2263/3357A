@@ -137,27 +137,60 @@ public class ConsultationController {
     }
 
     @PostMapping("/slot/save")
-    public boolean saveSlot(@RequestBody ConsultationSlot slot) {
+    public Map<String, Object> saveSlot(@RequestBody ConsultationSlot slot) {
+        Map<String, Object> result = new HashMap<>();
+
         if (slot.getTeacherId() != null && slot.getTeacherName() == null) {
             Teacher teacher = teacherService.getById(slot.getTeacherId());
             if (teacher != null) {
                 slot.setTeacherName(teacher.getTname());
             }
         }
+
+        if (slot.getId() != null) {
+            ConsultationSlot existing = slotService.getById(slot.getId());
+            if (existing == null) {
+                result.put("success", false);
+                result.put("message", "时段不存在");
+                return result;
+            }
+
+            if (slot.getCapacity() != null && slot.getCapacity() < existing.getBookedCount()) {
+                result.put("success", false);
+                result.put("message", "容量不能小于已预约人数（" + existing.getBookedCount() + "人）");
+                return result;
+            }
+
+            existing.setSlotDate(slot.getSlotDate());
+            existing.setStartTime(slot.getStartTime());
+            existing.setEndTime(slot.getEndTime());
+            existing.setLocation(slot.getLocation());
+            existing.setLocationType(slot.getLocationType());
+            existing.setCapacity(slot.getCapacity());
+            existing.setRemark(slot.getRemark());
+            if (slot.getTeacherName() != null) {
+                existing.setTeacherName(slot.getTeacherName());
+            }
+
+            boolean updated = slotService.updateById(existing);
+            if (updated) {
+                refreshSlotStatus(existing.getId());
+            }
+            result.put("success", updated);
+            return result;
+        }
+
         if (slot.getStatus() == null) {
             slot.setStatus("available");
         }
-        if (slot.getBookedCount() == null) {
-            slot.setBookedCount(0);
-        }
-        if (slot.getVersion() == null) {
-            slot.setVersion(0);
-        }
+        slot.setBookedCount(0);
+        slot.setVersion(0);
 
-        boolean result = slotService.saveOrUpdate(slot);
-        if (result) {
+        boolean saved = slotService.save(slot);
+        if (saved) {
             refreshSlotStatus(slot.getId());
         }
+        result.put("success", saved);
         return result;
     }
 

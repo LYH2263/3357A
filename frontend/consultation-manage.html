@@ -639,13 +639,13 @@
                 method: 'POST',
                 body: JSON.stringify(data)
             }).then(result => {
-                if (result) {
+                if (result.success) {
                     api.showToast(slotId ? '修改成功' : '发布成功', 'success');
                     bootstrap.Modal.getInstance(document.getElementById('slotModal')).hide();
                     loadSlots();
                     loadStats();
                 } else {
-                    api.showToast('保存失败', 'danger');
+                    api.showToast(result.message || '保存失败', 'danger');
                 }
             }).catch(err => {
                 api.showToast('保存失败：' + err.message, 'danger');
