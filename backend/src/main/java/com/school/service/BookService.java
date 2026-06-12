@@ -39,16 +39,37 @@ public class BookService extends ServiceImpl<BookMapper, Book> {
 
     @Transactional
     public boolean saveBook(Book book) {
-        if (book.getTotalCount() != null && book.getAvailableCount() == null) {
-            book.setAvailableCount(book.getTotalCount());
+        if (book.getId() == null) {
+            if (book.getTotalCount() != null && book.getAvailableCount() == null) {
+                book.setAvailableCount(book.getTotalCount());
+            }
+            if (book.getBorrowCount() == null) {
+                book.setBorrowCount(0);
+            }
+            if (book.getVersion() == null) {
+                book.setVersion(0);
+            }
+            return this.save(book);
+        } else {
+            Book existing = this.getById(book.getId());
+            if (existing == null) {
+                throw new IllegalArgumentException("书目不存在");
+            }
+            if (book.getTotalCount() != null) {
+                int diff = book.getTotalCount() - existing.getTotalCount();
+                int newAvailable = existing.getAvailableCount() + diff;
+                if (newAvailable < 0) {
+                    throw new IllegalArgumentException("馆藏总数不能小于已借出数量");
+                }
+                book.setAvailableCount(newAvailable);
+            } else {
+                book.setAvailableCount(existing.getAvailableCount());
+            }
+            book.setBorrowCount(existing.getBorrowCount());
+            book.setVersion(existing.getVersion());
+            book.setCreateTime(existing.getCreateTime());
+            return this.updateById(book);
         }
-        if (book.getBorrowCount() == null) {
-            book.setBorrowCount(0);
-        }
-        if (book.getVersion() == null) {
-            book.setVersion(0);
-        }
-        return this.saveOrUpdate(book);
     }
 
     @Transactional

@@ -294,8 +294,10 @@
         const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
         const bookDetailModal = new bootstrap.Modal(document.getElementById('bookDetailModal'));
 
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+
         function init() {
-            api.checkTeacherLogin();
             loadStatistics();
             loadCategories();
             loadBooks();
@@ -310,19 +312,21 @@
             loadHotBooks();
         }
 
-        function loadStatistics() {
-            api.get('/api/book/statistics', function(res) {
+        async function loadStatistics() {
+            try {
+                const res = await api.request('/book/statistics');
                 if (res.success) {
                     document.getElementById('statTotalBooks').textContent = res.data.totalBooks;
                     document.getElementById('statTotalBorrowed').textContent = res.data.totalBorrowed;
                     document.getElementById('statOverdue').textContent = res.data.overdueCount;
                     document.getElementById('statTotalRecords').textContent = res.data.totalRecords;
                 }
-            });
+            } catch (err) {}
         }
 
-        function loadCategories() {
-            api.get('/api/book/categories', function(res) {
+        async function loadCategories() {
+            try {
+                const res = await api.request('/book/categories');
                 if (res.success && res.data) {
                     const select = document.getElementById('categoryFilter');
                     select.innerHTML = '<option value="">全部分类</option>';
@@ -330,7 +334,7 @@
                         select.innerHTML += `<option value="${cat}">${cat}</option>`;
                     });
                 }
-            });
+            } catch (err) {}
         }
 
         function searchBooks() {
@@ -349,7 +353,7 @@
             loadBooks();
         }
 
-        function loadBooks() {
+        async function loadBooks() {
             const params = new URLSearchParams({
                 pageNum: currentBookPage,
                 pageSize: pageSize
@@ -357,15 +361,18 @@
             if (currentBookKeyword) params.append('keyword', currentBookKeyword);
             if (currentBookCategory) params.append('category', currentBookCategory);
 
-            api.get('/api/book/list?' + params.toString(), function(res) {
+            try {
+                const res = await api.request('/book/list?' + params.toString());
                 if (res.success) {
                     renderBooks(res.data.records);
-                    renderPagination('bookPagination', res.data.current, res.data.pages, function(page) {
-                        currentBookPage = page;
-                        loadBooks();
-                    });
+                    renderPagination('bookPagination', res.data.current, res.data.pages, 'goBookPage');
                 }
-            });
+            } catch (err) {}
+        }
+
+        function goBookPage(page) {
+            currentBookPage = page;
+            loadBooks();
         }
 
         function renderBooks(books) {
@@ -430,8 +437,9 @@
             bookModal.show();
         }
 
-        function editBook(bookId) {
-            api.get('/api/book/' + bookId, function(res) {
+        async function editBook(bookId) {
+            try {
+                const res = await api.request('/book/' + bookId);
                 if (res.success && res.data) {
                     const book = res.data;
                     document.getElementById('bookModalTitle').textContent = '编辑书目';
@@ -455,40 +463,52 @@
                     
                     bookModal.show();
                 }
-            });
+            } catch (err) {}
         }
 
-        function uploadCover(event) {
+        async function uploadCover(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            const formData = new FormData();
-            formData.append('file', file);
+            const validation = api.validateImage(file);
+            if (!validation.valid) {
+                api.showToast(validation.message, 'danger');
+                return;
+            }
 
-            api.upload('/api/book/cover/upload', formData, function(res) {
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch(api.baseUrl + '/book/cover/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const res = await response.json();
                 if (res.success) {
                     document.getElementById('coverImagePath').value = res.data;
                     document.getElementById('coverImage').src = res.data;
                     document.getElementById('coverImage').style.display = 'block';
                     document.getElementById('coverPlaceholder').style.display = 'none';
                 } else {
-                    alert(res.message || '上传失败');
+                    api.showToast(res.message || '上传失败', 'danger');
                 }
-            });
+            } catch (err) {
+                api.showToast('上传失败', 'danger');
+            }
         }
 
-        function saveBook() {
+        async function saveBook() {
             const title = document.getElementById('bookTitle').value.trim();
             const author = document.getElementById('bookAuthor').value.trim();
             const category = document.getElementById('bookCategory').value.trim();
             const totalCount = parseInt(document.getElementById('bookTotalCount').value);
 
             if (!title || !author || !category || !totalCount) {
-                alert('请填写必填项');
+                api.showToast('请填写必填项', 'warning');
                 return;
             }
 
-            const teacher = api.getTeacherInfo();
             const data = {
                 title: title,
                 author: author,
@@ -497,8 +517,8 @@
                 totalCount: totalCount,
                 description: document.getElementById('bookDescription').value.trim(),
                 coverImage: document.getElementById('coverImagePath').value,
-                creatorId: teacher ? teacher.tid : 1,
-                creatorName: teacher ? teacher.tname : '管理员'
+                creatorId: session.user.tid,
+                creatorName: session.user.tname
             };
 
             const bookId = document.getElementById('bookId').value;
@@ -506,21 +526,24 @@
                 data.id = parseInt(bookId);
             }
 
-            api.post('/api/book/save', data, function(res) {
+            try {
+                const res = await api.request('/book/save', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
                 if (res.success) {
-                    alert('保存成功');
+                    api.showToast('保存成功', 'success');
                     bookModal.hide();
                     loadBooks();
                     loadStatistics();
                     loadCategories();
-                } else {
-                    alert(res.message || '保存失败');
                 }
-            });
+            } catch (err) {}
         }
 
-        function viewBookDetail(bookId) {
-            api.get('/api/book/' + bookId, function(res) {
+        async function viewBookDetail(bookId) {
+            try {
+                const res = await api.request('/book/' + bookId);
                 if (res.success && res.data) {
                     const book = res.data;
                     const content = document.getElementById('bookDetailContent');
@@ -549,24 +572,27 @@
                     `;
                     bookDetailModal.show();
                 }
-            });
+            } catch (err) {}
         }
 
-        function deleteBook(bookId) {
+        async function deleteBook(bookId) {
             if (!confirm('确定要删除该书吗？删除后将无法恢复。')) return;
-            api.post('/api/book/delete/' + bookId, {}, function(res) {
+            try {
+                const res = await api.request('/book/delete/' + bookId, {
+                    method: 'POST',
+                    body: JSON.stringify({})
+                });
                 if (res.success) {
-                    alert('删除成功');
+                    api.showToast('删除成功', 'success');
                     loadBooks();
                     loadStatistics();
-                } else {
-                    alert(res.message || '删除失败');
                 }
-            });
+            } catch (err) {}
         }
 
-        function viewBorrowRecords(bookId) {
-            api.get('/api/book/record/book/' + bookId, function(res) {
+        async function viewBorrowRecords(bookId) {
+            try {
+                const res = await api.request('/book/record/book/' + bookId);
                 if (res.success && res.data) {
                     const records = res.data;
                     const content = document.getElementById('bookDetailContent');
@@ -602,7 +628,7 @@
                     `;
                     bookDetailModal.show();
                 }
-            });
+            } catch (err) {}
         }
 
         function searchRecords() {
@@ -621,7 +647,7 @@
             loadRecords();
         }
 
-        function loadRecords() {
+        async function loadRecords() {
             const params = new URLSearchParams({
                 pageNum: currentRecordPage,
                 pageSize: pageSize,
@@ -629,15 +655,18 @@
             });
             if (currentRecordKeyword) params.append('keyword', currentRecordKeyword);
 
-            api.get('/api/book/record/list?' + params.toString(), function(res) {
+            try {
+                const res = await api.request('/book/record/list?' + params.toString());
                 if (res.success) {
                     renderRecords(res.data.records);
-                    renderPagination('recordPagination', res.data.current, res.data.pages, function(page) {
-                        currentRecordPage = page;
-                        loadRecords();
-                    });
+                    renderPagination('recordPagination', res.data.current, res.data.pages, 'goRecordPage');
                 }
-            });
+            } catch (err) {}
+        }
+
+        function goRecordPage(page) {
+            currentRecordPage = page;
+            loadRecords();
         }
 
         function renderRecords(records) {
@@ -675,38 +704,43 @@
             `).join('');
         }
 
-        function confirmReturn(recordId, bookTitle, studentName) {
+        async function confirmReturn(recordId, bookTitle, studentName) {
             if (!confirm(`确认 ${studentName} 已归还《${bookTitle}》吗？`)) return;
-            api.post('/api/book/return/' + recordId, {}, function(res) {
+            try {
+                const res = await api.request('/book/return/' + recordId, {
+                    method: 'POST',
+                    body: JSON.stringify({})
+                });
                 if (res.success) {
-                    alert('归还成功');
+                    api.showToast('归还成功', 'success');
                     loadRecords();
                     loadBooks();
                     loadStatistics();
-                } else {
-                    alert(res.message || '归还失败');
                 }
-            });
+            } catch (err) {}
         }
 
-        function updateOverdue() {
-            api.post('/api/book/updateOverdue', {}, function(res) {
+        async function updateOverdue() {
+            try {
+                const res = await api.request('/book/updateOverdue', {
+                    method: 'POST',
+                    body: JSON.stringify({})
+                });
                 if (res.success) {
-                    alert(res.message || '更新成功');
+                    api.showToast(res.message || '更新成功', 'success');
                     loadRecords();
                     loadStatistics();
-                } else {
-                    alert(res.message || '更新失败');
                 }
-            });
+            } catch (err) {}
         }
 
-        function loadHotBooks() {
-            api.get('/api/book/hot?limit=10', function(res) {
+        async function loadHotBooks() {
+            try {
+                const res = await api.request('/book/hot?limit=10');
                 if (res.success && res.data) {
                     renderHotBooks(res.data);
                 }
-            });
+            } catch (err) {}
         }
 
         function renderHotBooks(books) {
@@ -716,9 +750,10 @@
                 return;
             }
 
+            const maxBorrow = Math.max(...books.map(b => b.borrowCount));
+
             container.innerHTML = books.map((book, index) => {
                 const rankClass = index === 0 ? 'top1' : index === 1 ? 'top2' : index === 2 ? 'top3' : '';
-                const maxBorrow = Math.max(...books.map(b => b.borrowCount));
                 const percentage = maxBorrow > 0 ? Math.round((book.borrowCount / maxBorrow) * 100) : 0;
                 
                 return `
@@ -773,7 +808,7 @@
             return new Date(dateStr).toLocaleString('zh-CN');
         }
 
-        function renderPagination(containerId, currentPage, totalPages, onPageChange) {
+        function renderPagination(containerId, currentPage, totalPages, fnName) {
             const container = document.getElementById(containerId);
             if (totalPages <= 1) {
                 container.innerHTML = '';
@@ -781,30 +816,30 @@
             }
 
             let html = '';
-            html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage > 1 ? onPageChange.name + '(' + (currentPage - 1) + ')' : ''}">上一页</a></li>`;
+            html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage > 1 ? fnName + '(' + (currentPage - 1) + ')' : ''}">上一页</a></li>`;
             
             const startPage = Math.max(1, currentPage - 2);
             const endPage = Math.min(totalPages, currentPage + 2);
             
             if (startPage > 1) {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(1)">1</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${fnName}(1)">1</a></li>`;
                 if (startPage > 2) {
                     html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
                 }
             }
             
             for (let i = startPage; i <= endPage; i++) {
-                html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(${i})">${i}</a></li>`;
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${fnName}(${i})">${i}</a></li>`;
             }
             
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
                     html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
                 }
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(${totalPages})">${totalPages}</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${fnName}(${totalPages})">${totalPages}</a></li>`;
             }
             
-            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage < totalPages ? onPageChange.name + '(' + (currentPage + 1) + ')' : ''}">下一页</a></li>`;
+            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage < totalPages ? fnName + '(' + (currentPage + 1) + ')' : ''}">下一页</a></li>`;
             
             container.innerHTML = html;
         }

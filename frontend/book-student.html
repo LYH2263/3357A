@@ -179,9 +179,11 @@
         const bookDetailModal = new bootstrap.Modal(document.getElementById('bookDetailModal'));
         let currentStudent = null;
 
+        const session = api.getSession();
+        if (!session.user || session.role !== 'student') location.href = 'index.html';
+        currentStudent = session.user;
+
         function init() {
-            api.checkStudentLogin();
-            currentStudent = api.getStudentInfo();
             document.getElementById('userInfo').textContent = currentStudent ? `${currentStudent.username} (${currentStudent.userno})` : '';
             
             loadCategories();
@@ -206,8 +208,9 @@
             }
         }
 
-        function loadCategories() {
-            api.get('/api/book/categories', function(res) {
+        async function loadCategories() {
+            try {
+                const res = await api.request('/book/categories');
                 if (res.success && res.data) {
                     const container = document.getElementById('categoryChips');
                     let html = '<span class="category-chip active" onclick="selectCategory(\'\')">全部</span>';
@@ -216,7 +219,7 @@
                     });
                     container.innerHTML = html;
                 }
-            });
+            } catch (err) {}
         }
 
         function selectCategory(category) {
@@ -248,7 +251,7 @@
             loadBooks();
         }
 
-        function loadBooks() {
+        async function loadBooks() {
             const params = new URLSearchParams({
                 pageNum: currentPage,
                 pageSize: pageSize
@@ -256,15 +259,18 @@
             if (currentKeyword) params.append('keyword', currentKeyword);
             if (currentCategory) params.append('category', currentCategory);
 
-            api.get('/api/book/list?' + params.toString(), function(res) {
+            try {
+                const res = await api.request('/book/list?' + params.toString());
                 if (res.success) {
                     renderBooks(res.data.records);
-                    renderPagination('bookPagination', res.data.current, res.data.pages, function(page) {
-                        currentPage = page;
-                        loadBooks();
-                    });
+                    renderPagination('bookPagination', res.data.current, res.data.pages, 'goBookPage');
                 }
-            });
+            } catch (err) {}
+        }
+
+        function goBookPage(page) {
+            currentPage = page;
+            loadBooks();
         }
 
         function renderBooks(books) {
@@ -319,8 +325,9 @@
             }).join('');
         }
 
-        function viewBookDetail(bookId) {
-            api.get('/api/book/' + bookId, function(res) {
+        async function viewBookDetail(bookId) {
+            try {
+                const res = await api.request('/book/' + bookId);
                 if (res.success && res.data) {
                     const book = res.data;
                     const isAvailable = book.availableCount > 0;
@@ -378,42 +385,45 @@
                     `;
                     bookDetailModal.show();
                 }
-            });
+            } catch (err) {}
         }
 
-        function borrowBook(bookId, bookTitle) {
+        async function borrowBook(bookId, bookTitle) {
             if (!currentStudent) {
-                alert('请先登录');
+                api.showToast('请先登录', 'warning');
                 return;
             }
             
             if (!confirm(`确认借阅《${bookTitle}》吗？\n借阅期限为14天，请按时归还。`)) return;
             
-            api.post('/api/book/borrow', {
-                bookId: bookId,
-                studentId: currentStudent.uid
-            }, function(res) {
+            try {
+                const res = await api.request('/book/borrow', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        bookId: bookId,
+                        studentId: currentStudent.uid
+                    })
+                });
                 if (res.success) {
-                    alert('借阅成功！请按时归还');
+                    api.showToast('借阅成功！请按时归还', 'success');
                     loadBooks();
                     loadMyRecords();
-                } else {
-                    alert(res.message || '借阅失败');
                 }
-            });
+            } catch (err) {}
         }
 
-        function loadMyRecords() {
+        async function loadMyRecords() {
             if (!currentStudent) return;
             
-            api.get('/api/book/record/my?studentId=' + currentStudent.uid, function(res) {
+            try {
+                const res = await api.request('/book/record/my?studentId=' + currentStudent.uid);
                 if (res.success) {
                     myRecords = res.data || [];
                     renderMyStats(myRecords);
                     renderMyRecords(myRecords);
                     checkOverdueAlert(myRecords);
                 }
-            });
+            } catch (err) {}
         }
 
         function renderMyStats(records) {
@@ -568,31 +578,35 @@
             }).join('');
         }
 
-        function renewBook(recordId, bookTitle) {
+        async function renewBook(recordId, bookTitle) {
             if (!confirm(`确认续借《${bookTitle}》吗？\n续借后将延长14天借阅期限。`)) return;
             
-            api.post('/api/book/renew/' + recordId, {}, function(res) {
+            try {
+                const res = await api.request('/book/renew/' + recordId, {
+                    method: 'POST',
+                    body: JSON.stringify({})
+                });
                 if (res.success) {
-                    alert(res.message || '续借成功');
+                    api.showToast(res.message || '续借成功', 'success');
                     loadMyRecords();
-                } else {
-                    alert(res.message || '续借失败');
                 }
-            });
+            } catch (err) {}
         }
 
-        function returnBook(recordId, bookTitle) {
+        async function returnBook(recordId, bookTitle) {
             if (!confirm(`确认归还《${bookTitle}》吗？`)) return;
             
-            api.post('/api/book/return/' + recordId, {}, function(res) {
+            try {
+                const res = await api.request('/book/return/' + recordId, {
+                    method: 'POST',
+                    body: JSON.stringify({})
+                });
                 if (res.success) {
-                    alert('归还成功');
+                    api.showToast('归还成功', 'success');
                     loadBooks();
                     loadMyRecords();
-                } else {
-                    alert(res.message || '归还失败');
                 }
-            });
+            } catch (err) {}
         }
 
         function formatDate(dateStr) {
@@ -605,7 +619,7 @@
             return new Date(dateStr).toLocaleString('zh-CN');
         }
 
-        function renderPagination(containerId, currentPage, totalPages, onPageChange) {
+        function renderPagination(containerId, currentPage, totalPages, fnName) {
             const container = document.getElementById(containerId);
             if (totalPages <= 1) {
                 container.innerHTML = '';
@@ -613,30 +627,30 @@
             }
 
             let html = '';
-            html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage > 1 ? onPageChange.name + '(' + (currentPage - 1) + ')' : ''}">上一页</a></li>`;
+            html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage > 1 ? fnName + '(' + (currentPage - 1) + ')' : ''}">上一页</a></li>`;
             
             const startPage = Math.max(1, currentPage - 2);
             const endPage = Math.min(totalPages, currentPage + 2);
             
             if (startPage > 1) {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(1)">1</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${fnName}(1)">1</a></li>`;
                 if (startPage > 2) {
                     html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
                 }
             }
             
             for (let i = startPage; i <= endPage; i++) {
-                html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(${i})">${i}</a></li>`;
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${fnName}(${i})">${i}</a></li>`;
             }
             
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
                     html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
                 }
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${onPageChange.name}(${totalPages})">${totalPages}</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${fnName}(${totalPages})">${totalPages}</a></li>`;
             }
             
-            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage < totalPages ? onPageChange.name + '(' + (currentPage + 1) + ')' : ''}">下一页</a></li>`;
+            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${currentPage < totalPages ? fnName + '(' + (currentPage + 1) + ')' : ''}">下一页</a></li>`;
             
             container.innerHTML = html;
         }
