@@ -23,6 +23,11 @@
         .image-item .img-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .image-item:hover .img-overlay { opacity: 1; }
         .image-item.cover-item::after { content: '封面'; position: absolute; top: 8px; left: 8px; background: #198754; color: white; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; }
+        .image-item.dragging { opacity: 0.4; transform: scale(0.95); }
+        .image-item.drag-over { outline: 3px dashed #667eea; outline-offset: -3px; }
+        .image-item .drag-handle { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border-radius: 4px; padding: 4px 8px; cursor: grab; font-size: 0.75rem; z-index: 2; opacity: 0; transition: opacity 0.3s; }
+        .image-item:hover .drag-handle { opacity: 1; }
+        .sort-saving { position: fixed; top: 70px; right: 20px; z-index: 3000; }
         .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; align-items: center; justify-content: center; }
         .lightbox.active { display: flex; }
         .lightbox img { max-width: 90vw; max-height: 85vh; object-fit: contain; }
@@ -139,7 +144,10 @@
 
             <div class="card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-grid me-2"></i>相册图片 (<span id="imageCount">0</span>)</h6>
+                    <h6 class="fw-bold mb-0"><i class="bi bi-grid me-2"></i>相册图片 (<span id="imageCount">0</span>) <small class="text-muted fw-normal ms-2">拖拽图片可调整顺序</small></h6>
+                    <button class="btn btn-sm btn-outline-success" id="btnSaveSort" style="display:none" onclick="saveImageSort()">
+                        <i class="bi bi-check-lg me-1"></i>保存排序
+                    </button>
                 </div>
                 <div id="imageGrid" class="image-grid"></div>
             </div>
@@ -377,13 +385,15 @@
         function renderImages(images) {
             currentImages = images;
             document.getElementById('imageCount').innerText = images.length;
+            document.getElementById('btnSaveSort').style.display = 'none';
             const grid = document.getElementById('imageGrid');
             if (images.length === 0) {
                 grid.innerHTML = '<div class="col-12 empty-state" style="grid-column:1/-1"><i class="bi bi-image"></i><p>相册暂无图片，请上传</p></div>';
                 return;
             }
             grid.innerHTML = images.map((img, idx) => `
-                <div class="image-item ${img.isCover ? 'cover-item' : ''}" data-id="${img.id}">
+                <div class="image-item ${img.isCover ? 'cover-item' : ''}" data-id="${img.id}" data-idx="${idx}" draggable="true">
+                    <span class="drag-handle" title="拖拽排序"><i class="bi bi-grip-vertical"></i></span>
                     <img src="${img.imagePath}" alt="" onclick="openLightbox(${idx})">
                     <div class="img-overlay">
                         ${!img.isCover ? `<button class="btn btn-sm btn-success" onclick="event.stopPropagation();setCover(${img.id})" title="设为封面"><i class="bi bi-bookmark-star"></i></button>` : ''}
@@ -391,6 +401,58 @@
                     </div>
                 </div>
             `).join('');
+            initDragSort();
+        }
+
+        let dragSrcIdx = null;
+
+        function initDragSort() {
+            const grid = document.getElementById('imageGrid');
+            const items = grid.querySelectorAll('.image-item');
+            items.forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    dragSrcIdx = parseInt(this.dataset.idx);
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                item.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                    grid.querySelectorAll('.image-item').forEach(el => el.classList.remove('drag-over'));
+                });
+                item.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    this.classList.add('drag-over');
+                });
+                item.addEventListener('dragleave', function() {
+                    this.classList.remove('drag-over');
+                });
+                item.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    const dropIdx = parseInt(this.dataset.idx);
+                    if (dragSrcIdx === null || dragSrcIdx === dropIdx) return;
+                    const moved = currentImages.splice(dragSrcIdx, 1)[0];
+                    currentImages.splice(dropIdx, 0, moved);
+                    renderImages(currentImages);
+                    document.getElementById('btnSaveSort').style.display = '';
+                });
+            });
+        }
+
+        async function saveImageSort() {
+            const sortList = currentImages.map((img, idx) => ({ id: img.id, sortOrder: idx + 1 }));
+            try {
+                const res = await api.album.sortImages(sortList);
+                if (res.success) {
+                    api.showToast('图片排序已保存', 'success');
+                    document.getElementById('btnSaveSort').style.display = 'none';
+                } else {
+                    api.showToast('排序保存失败', 'danger');
+                }
+            } catch (e) {
+                api.showToast('排序保存失败', 'danger');
+            }
         }
 
         function renderComments(comments) {

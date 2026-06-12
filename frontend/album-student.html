@@ -83,17 +83,51 @@
         <div class="lightbox-info small" id="lightboxInfo"></div>
     </div>
 
+    <div class="modal fade" id="albumModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">创建班级相册</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">相册标题 <span class="text-danger">*</span></label>
+                        <input type="text" id="albumTitle" class="form-control" placeholder="例如：班级春游精彩瞬间">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">活动日期</label>
+                        <input type="date" id="albumActivityDate" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">相册描述</label>
+                        <textarea id="albumDescription" class="form-control" rows="4" placeholder="记录这次活动的精彩瞬间..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAlbum()">创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container py-4">
         <div id="listView">
             <div class="d-flex align-items-center mb-4">
                 <h4 class="fw-bold mb-0 me-auto"><i class="bi bi-images text-primary me-2"></i>班级相册</h4>
-                <div class="btn-group">
-                    <button class="tab-btn active" id="tabMyClass" onclick="switchTab('myClass')">
-                        <i class="bi bi-layers me-1"></i>本班相册
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-primary" id="btnCreateAlbum" onclick="showAlbumModal()" style="display:none">
+                        <i class="bi bi-plus-lg me-1"></i>创建相册
                     </button>
-                    <button class="tab-btn" id="tabFeatured" onclick="switchTab('featured')">
-                        <i class="bi bi-star me-1"></i>全校精选
-                    </button>
+                    <div class="btn-group">
+                        <button class="tab-btn active" id="tabMyClass" onclick="switchTab('myClass')">
+                            <i class="bi bi-layers me-1"></i>本班相册
+                        </button>
+                        <button class="tab-btn" id="tabFeatured" onclick="switchTab('featured')">
+                            <i class="bi bi-star me-1"></i>全校精选
+                        </button>
+                    </div>
                 </div>
             </div>
             <div id="albumList" class="row g-4"></div>
@@ -150,7 +184,7 @@
                         <div class="card-body p-4">
                             <h6 class="fw-bold mb-3"><i class="bi bi-chat-dots me-2"></i>发表评论</h6>
                             <div class="d-flex gap-3">
-                                <div class="avatar-sm">${(session.user && session.user.username) ? session.user.username.charAt(0) : 'S'}</div>
+                                <div class="avatar-sm" id="commentAvatar"></div>
                                 <div class="flex-grow-1">
                                     <textarea id="commentInput" class="form-control mb-2" rows="3" placeholder="分享你的想法..."></textarea>
                                     <div class="d-flex justify-content-between align-items-center">
@@ -194,6 +228,11 @@
         if (!session.user || session.role !== 'student') location.href = 'index.html';
 
         document.getElementById('userInfo').innerText = `欢迎，${session.user.username}`;
+        document.getElementById('commentAvatar').innerText = (session.user && session.user.username) ? session.user.username.charAt(0) : 'S';
+
+        if (session.user && session.user.classId) {
+            document.getElementById('btnCreateAlbum').style.display = '';
+        }
 
         let currentTab = 'myClass';
         let currentAlbum = null;
@@ -522,6 +561,42 @@
             const div = document.createElement('div');
             div.textContent = s;
             return div.innerHTML;
+        }
+
+        function showAlbumModal() {
+            document.getElementById('albumTitle').value = '';
+            document.getElementById('albumDescription').value = '';
+            document.getElementById('albumActivityDate').value = '';
+            new bootstrap.Modal(document.getElementById('albumModal')).show();
+        }
+
+        async function saveAlbum() {
+            const title = document.getElementById('albumTitle').value.trim();
+            if (!title) { api.showToast('请输入相册标题', 'warning'); return; }
+            if (!session.user.classId) { api.showToast('未关联班级，无法创建', 'warning'); return; }
+
+            const data = {
+                title,
+                classId: session.user.classId,
+                className: session.user.classname || '',
+                activityDate: document.getElementById('albumActivityDate').value || null,
+                description: document.getElementById('albumDescription').value.trim(),
+                creatorId: session.user.uid,
+                creatorName: session.user.username,
+                creatorType: 'student'
+            };
+            try {
+                const res = await api.album.save(data);
+                if (res.success) {
+                    api.showToast('相册已创建', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('albumModal')).hide();
+                    switchTab('myClass');
+                } else {
+                    api.showToast(res.message || '创建失败', 'danger');
+                }
+            } catch (e) {
+                api.showToast('创建失败', 'danger');
+            }
         }
 
         loadAlbumList();
