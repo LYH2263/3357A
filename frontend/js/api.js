@@ -3,6 +3,8 @@ const API_BASE = 'http://localhost:8357/api';
 const api = {
     baseUrl: API_BASE,
     async request(url, options = {}) {
+        const suppressToast = options.suppressToast === true;
+        delete options.suppressToast;
         try {
             const response = await fetch(`${API_BASE}${url}`, {
                 headers: {
@@ -10,11 +12,34 @@ const api = {
                 },
                 ...options,
             });
-            if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            const text = await response.text();
+            let data = null;
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    data = text;
+                }
+            }
+            if (!response.ok) {
+                const errMsg = (data && data.message) ? data.message : '网络请求失败，请稍后重试';
+                const error = new Error(errMsg);
+                error.responseData = data;
+                error.status = response.status;
+                if (!suppressToast) {
+                    this.showToast(errMsg, 'danger');
+                }
+                throw error;
+            }
+            return data;
         } catch (error) {
+            if (error.status) {
+                throw error;
+            }
             console.error('API Error:', error);
-            this.showToast('网络请求失败，请稍后重试', 'danger');
+            if (!suppressToast) {
+                this.showToast('网络请求失败，请稍后重试', 'danger');
+            }
             throw error;
         }
     },

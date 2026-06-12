@@ -403,6 +403,8 @@
                     if (firstEnded) {
                         mySelect.value = firstEnded.id;
                         rankSelect.value = firstEnded.id;
+                        loadMyResult();
+                        loadRanking();
                     }
                 }
             } catch (e) {
@@ -551,7 +553,6 @@
                 document.getElementById('resultModalBody').innerHTML = renderResultContent(result);
                 new bootstrap.Modal(document.getElementById('resultModal')).show();
             } catch (e) {
-                api.showToast('加载失败', 'danger');
             }
         }
 
@@ -789,8 +790,6 @@
                 bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
                 loadActivities();
             } catch (e) {
-                const err = await e.json().catch(() => ({}));
-                api.showToast(err.message || '发布失败', 'danger');
             }
         }
 
@@ -808,7 +807,6 @@
                 bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
                 loadActivities();
             } catch (e) {
-                api.showToast('操作失败', 'danger');
             }
         }
 

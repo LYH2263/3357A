@@ -94,7 +94,7 @@ public class EvaluationController {
     }
 
     @PostMapping("/student/submit")
-    public void submitEvaluation(@RequestBody Map<String, Object> params) {
+    public Map<String, Object> submitEvaluation(@RequestBody Map<String, Object> params) {
         Integer activityId = ((Number) params.get("activityId")).intValue();
         Integer studentId = ((Number) params.get("studentId")).intValue();
         Integer teacherId = ((Number) params.get("teacherId")).intValue();
@@ -108,6 +108,10 @@ public class EvaluationController {
         }
 
         evaluationService.submitEvaluation(activityId, studentId, teacherId, scores, comment);
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("success", true);
+        result.put("message", "提交成功");
+        return result;
     }
 
     @GetMapping("/student/check-submitted")

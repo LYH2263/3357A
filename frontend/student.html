@@ -856,12 +856,6 @@
                 backToEvalTeachers();
                 enterEvalActivity(currentEvalActivityId);
             } catch (err) {
-                try {
-                    const errData = await err.json();
-                    api.showToast(errData.message || '提交失败', 'danger');
-                } catch {
-                    api.showToast('提交失败', 'danger');
-                }
             }
         });
 
