@@ -241,5 +241,207 @@ const api = {
             const query = classId ? `?classId=${classId}` : '';
             return api.request(`/discipline/statistics${query}`);
         }
+    },
+
+    directory: {
+        async getTeachers(params = {}) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
+
+            const query = new URLSearchParams(params).toString();
+            return api.request(`/directory/teachers${query ? '?' + query : ''}`, { headers });
+        },
+
+        async getStudents(params = {}) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
+
+            const query = new URLSearchParams(params).toString();
+            return api.request(`/directory/students${query ? '?' + query : ''}`, { headers });
+        },
+
+        async getTeacherDetail(id) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+
+            return api.request(`/directory/teacher/${id}`, { headers });
+        },
+
+        async getStudentDetail(id) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
+
+            return api.request(`/directory/student/${id}`, { headers });
+        },
+
+        async getClasses() {
+            return api.request('/directory/classes');
+        },
+
+        async getExpertise() {
+            return api.request('/directory/expertise');
+        },
+
+        async exportTeachersVcf(params = {}) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+
+            const response = await fetch(`${API_BASE}/directory/export/teachers/vcf`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(params)
+            });
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '教师通讯录.vcf';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        },
+
+        async exportStudentsVcf(params = {}) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
+
+            const response = await fetch(`${API_BASE}/directory/export/students/vcf`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(params)
+            });
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '学生通讯录.vcf';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        },
+
+        async exportTeachersCsv(params = {}) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+
+            const response = await fetch(`${API_BASE}/directory/export/teachers/csv`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(params)
+            });
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '教师通讯录.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        },
+
+        async exportStudentsCsv(params = {}) {
+            const session = api.getSession();
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
+
+            const response = await fetch(`${API_BASE}/directory/export/students/csv`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(params)
+            });
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '学生通讯录.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        },
+
+        generateVCard(data, type) {
+            let vcf = 'BEGIN:VCARD\nVERSION:3.0\n';
+            if (type === 'teacher') {
+                vcf += `N:${data.tname}\n`;
+                vcf += `FN:${data.tname}\n`;
+                vcf += `TITLE:${data.expertise || ''}\n`;
+                vcf += `TEL;TYPE=WORK:${data.tno || ''}\n`;
+                if (data.tdescript) {
+                    vcf += `NOTE:${data.tdescript.replace(/\n/g, ' ')}\n`;
+                }
+            } else {
+                vcf += `N:${data.username}\n`;
+                vcf += `FN:${data.username}\n`;
+                vcf += `ORG:${data.classname || ''}\n`;
+                vcf += `TEL;TYPE=WORK:${data.userno || ''}\n`;
+                if (data.usersex) vcf += `GENDER:${data.usersex}\n`;
+                if (data.userdescript) {
+                    vcf += `NOTE:${data.userdescript.replace(/\n/g, ' ')}\n`;
+                }
+            }
+            vcf += 'END:VCARD\n';
+            return vcf;
+        },
+
+        downloadVCard(vcf, filename) {
+            const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        },
+
+        async copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                api.showToast('已复制到剪贴板', 'success');
+                return true;
+            } catch (err) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    api.showToast('已复制到剪贴板', 'success');
+                    return true;
+                } finally {
+                    document.body.removeChild(textarea);
+                }
+            }
+        }
     }
 };

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>师生名录 - 管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+        .nav-link {
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+            padding: 0.8rem 1rem;
+            color: #333;
+        }
+        .nav-link:hover, .nav-link.active {
+            background: #f0f4ff;
+            color: var(--primary-color);
+        }
+        .nav-link i {
+            margin-right: 10px;
+        }
+
+        .directory-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+        }
+        .directory-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            background: transparent;
+        }
+
+        .alphabet-index {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+        }
+        .alphabet-index .letter-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #6c757d;
+            background: #f8f9fa;
+        }
+        .alphabet-index .letter-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        .alphabet-index .letter-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        .alphabet-index .letter-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .person-card {
+            border: 1px solid #e3e6f0;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        .person-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+            border-color: var(--primary-color);
+        }
+        .person-card .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .person-card .name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+        .person-card .no {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+        .person-card .tag {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            background: #e7f1ff;
+            color: #0066cc;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .person-card .tag.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .person-card .tag.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .group-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 1.5rem 0 0.75rem;
+            padding-left: 0.75rem;
+            border-left: 3px solid var(--primary-color);
+        }
+        .group-title small {
+            color: #6c757d;
+            font-weight: normal;
+            margin-left: 0.5rem;
+        }
+
+        .detail-modal .modal-content {
+            border-radius: 1rem;
+            border: none;
+        }
+        .detail-modal .avatar-lg {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0 auto 1rem;
+        }
+        .detail-modal .info-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .detail-modal .info-item:last-child {
+            border-bottom: none;
+        }
+        .detail-modal .info-label {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+        .detail-modal .info-value {
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .loading-skeleton {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+        .skeleton-card {
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            background: white;
+        }
+        .skeleton-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 0.75rem;
+        }
+        .skeleton-line {
+            height: 16px;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        .skeleton-line.short {
+            width: 60%;
+        }
+
+        .filter-section {
+            background: #f8f9fa;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .page-btn {
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar d-flex flex-column p-3">
+        <a href="#" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="discipline-manage.html" class="nav-link"><i class="bi bi-award"></i>奖惩管理</a></li>
+            <li><a href="evaluation-manage.html" class="nav-link"><i class="bi bi-star-half"></i>教师评教</a></li>
+            <li><a href="calendar-manage.html" class="nav-link"><i class="bi bi-calendar3"></i>教学日历</a></li>
+            <li><a href="repository-manage.html" class="nav-link"><i class="bi bi-folder-symlink"></i>教学资料库</a></li>
+            <li><a href="album-manage.html" class="nav-link"><i class="bi bi-images"></i>班级相册</a></li>
+            <li><a href="consultation-manage.html" class="nav-link"><i class="bi bi-calendar-check"></i>答疑预约</a></li>
+            <li><a href="report-center.html" class="nav-link"><i class="bi bi-graph-up-arrow"></i>数据分析报表</a></li>
+            <li><a href="directory-manage.html" class="nav-link active"><i class="bi bi-book"></i>师生名录</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold">师生通讯录</h4>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="exportData('vcf')">
+                    <i class="bi bi-person-vcard me-1"></i>导出VCF
+                </button>
+                <button class="btn btn-outline-success" onclick="exportData('csv')">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>导出CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <ul class="nav nav-tabs directory-tabs mb-4" id="directoryTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" data-type="teacher" onclick="switchTab('teacher')">
+                        <i class="bi bi-person-badge me-2"></i>教师名录
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-type="student" onclick="switchTab('student')">
+                        <i class="bi bi-people me-2"></i>学生名录
+                    </button>
+                </li>
+            </ul>
+
+            <div id="teacherFilters" class="filter-section">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="teacherKeyword" class="form-control" placeholder="搜索姓名、工号、研究方向..." onkeyup="if(event.key==='Enter')loadData()">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="teacherExpertise" class="form-select" onchange="loadData()">
+                            <option value="all">全部研究方向</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="teacherGroupBy" class="form-select" onchange="loadData()">
+                            <option value="">不分组</option>
+                            <option value="expertise">按研究方向分组</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="teacherSortBy" class="form-select" onchange="loadData()">
+                            <option value="tno">按工号排序</option>
+                            <option value="tname">按姓名排序</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button class="btn btn-primary w-100" onclick="loadData()"><i class="bi bi-search"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="studentFilters" class="filter-section d-none">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="studentKeyword" class="form-control" placeholder="搜索姓名、学号、班级..." onkeyup="if(event.key==='Enter')loadData()">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="studentClass" class="form-select" onchange="loadData()">
+                            <option value="all">全部班级</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="studentStatus" class="form-select" onchange="loadData()">
+                            <option value="all">全部状态</option>
+                            <option value="已通过">已通过</option>
+                            <option value="待审核">待审核</option>
+                            <option value="已拒绝">已拒绝</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="studentGroupBy" class="form-select" onchange="loadData()">
+                            <option value="">不分组</option>
+                            <option value="class">按班级分组</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="studentSortBy" class="form-select" onchange="loadData()">
+                            <option value="classname">按班级排序</option>
+                            <option value="username">按姓名排序</option>
+                            <option value="userno">按学号排序</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button class="btn btn-primary w-100" onclick="loadData()"><i class="bi bi-search"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="alphabetIndex" class="alphabet-index"></div>
+
+            <div id="loadingState" class="loading-skeleton"></div>
+
+            <div id="emptyState" class="empty-state d-none">
+                <i class="bi bi-person-x"></i>
+                <h5 class="mb-2">暂无数据</h5>
+                <p class="mb-0">没有找到符合条件的人员信息</p>
+            </div>
+
+            <div id="contentArea"></div>
+
+            <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+        </div>
+    </div>
+
+    <div class="modal fade detail-modal" id="detailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">详细信息</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" id="detailContent"></div>
+                <div class="modal-footer border-0 d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-primary" onclick="copyInfo()">
+                        <i class="bi bi-clipboard me-1"></i>复制信息
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="generateVCard()">
+                        <i class="bi bi-person-vcard me-1"></i>生成电子名片
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/directory.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+        initDirectory('teacher');
+    </script>
+</body>
+</html>
