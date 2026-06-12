@@ -301,6 +301,8 @@ const api = {
                 'Content-Type': 'application/json'
             };
             if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
 
             return api.request(`/directory/teacher/${id}`, { headers });
         },
@@ -331,6 +333,8 @@ const api = {
                 'Content-Type': 'application/json'
             };
             if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
 
             const response = await fetch(`${API_BASE}/directory/export/teachers/vcf`, {
                 method: 'POST',
@@ -375,6 +379,8 @@ const api = {
                 'Content-Type': 'application/json'
             };
             if (session.role) headers['X-User-Role'] = session.role;
+            if (session.user && session.user.tid) headers['X-User-Id'] = session.user.tid;
+            if (session.user && session.user.uid) headers['X-User-Id'] = session.user.uid;
 
             const response = await fetch(`${API_BASE}/directory/export/teachers/csv`, {
                 method: 'POST',

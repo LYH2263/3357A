@@ -61,18 +61,19 @@ public class DirectoryController {
     @GetMapping("/teacher/{id}")
     public Map<String, Object> getTeacherDetail(
             @PathVariable Integer id,
-            @RequestHeader(value = "X-User-Role", required = false) String role) {
+            @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestHeader(value = "X-User-Id", required = false) Integer userId) {
 
         if (role == null || role.isEmpty()) {
             role = "teacher";
         }
 
-        TeacherDetail detail = directoryService.getTeacherDetail(id, role);
+        TeacherDetail detail = directoryService.getTeacherDetail(id, role, userId);
 
         Map<String, Object> response = new HashMap<>();
         if (detail == null) {
             response.put("success", false);
-            response.put("message", "未找到该教师信息");
+            response.put("message", "未找到该教师信息或无权限查看");
         } else {
             response.put("success", true);
             response.put("data", detail);
@@ -125,13 +126,14 @@ public class DirectoryController {
     public void exportTeachersVcf(
             @RequestBody DirectoryQuery query,
             @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestHeader(value = "X-User-Id", required = false) Integer userId,
             HttpServletResponse response) throws Exception {
 
         if (role == null || role.isEmpty()) {
             role = "teacher";
         }
 
-        String vcfContent = directoryService.exportTeachersToVcf(query, role);
+        String vcfContent = directoryService.exportTeachersToVcf(query, role, userId);
 
         response.setContentType("text/vcard;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
@@ -172,13 +174,14 @@ public class DirectoryController {
     public void exportTeachersCsv(
             @RequestBody DirectoryQuery query,
             @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestHeader(value = "X-User-Id", required = false) Integer userId,
             HttpServletResponse response) throws Exception {
 
         if (role == null || role.isEmpty()) {
             role = "teacher";
         }
 
-        String csvContent = directoryService.exportTeachersToCsv(query, role);
+        String csvContent = directoryService.exportTeachersToCsv(query, role, userId);
 
         response.setContentType("text/csv;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
