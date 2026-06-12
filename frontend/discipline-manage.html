@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>奖惩管理 - SchoolSystem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+        .nav-link {
+            border-radius: 0.5rem;
+            margin: 0.2rem 0;
+            padding: 0.8rem 1rem;
+            color: #333;
+        }
+        .nav-link:hover, .nav-link.active {
+            background: #f0f4ff;
+            color: var(--primary-color);
+        }
+        .nav-link i { margin-right: 10px; }
+        .category-reward { background-color: #198754 !important; }
+        .category-punishment { background-color: #dc3545 !important; }
+        .severity-low { background-color: #0dcaf0 !important; color: #333 !important; }
+        .severity-medium { background-color: #ffc107 !important; color: #333 !important; }
+        .severity-high { background-color: #dc3545 !important; }
+        .status-active { background-color: #198754 !important; }
+        .status-revoked { background-color: #6c757d !important; text-decoration: line-through; }
+        .stat-card { border-left: 4px solid var(--primary-color); }
+        .timeline-item { position: relative; padding-left: 30px; margin-bottom: 1rem; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: -1rem;
+            width: 2px;
+            background: #dee2e6;
+        }
+        .timeline-item:last-child::before { display: none; }
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #0d6efd;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px #dee2e6;
+        }
+        .timeline-item.reward-item::after { background: #198754; }
+        .timeline-item.punishment-item::after { background: #dc3545; }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar d-flex flex-column p-3 bg-white border-end">
+        <a href="teacher.html" class="d-flex align-items-center mb-3 me-md-auto link-dark text-decoration-none p-2">
+            <span class="fs-4 fw-bold text-primary">管理后台</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-people"></i>学生管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-book"></i>课程介绍</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-layers"></i>班级管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-person-badge"></i>教师管理</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-file-earmark-text"></i>教学内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-vial"></i>实验内容</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-chat-dots"></i>互动交流</a></li>
+            <li><a href="teacher.html" class="nav-link"><i class="bi bi-newspaper"></i>技术动态</a></li>
+            <li><a href="score-manage.html" class="nav-link"><i class="bi bi-bar-chart-line"></i>成绩管理</a></li>
+            <li><a href="#" class="nav-link active"><i class="bi bi-award"></i>奖惩管理</a></li>
+        </ul>
+        <hr>
+        <div class="p-2">
+            <button class="btn btn-outline-danger w-100" onclick="api.clearSession()">登出</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold"><i class="bi bi-award text-primary me-2"></i>奖惩档案管理</h4>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" onclick="showAddModal()">
+                    <i class="bi bi-plus-circle"></i> 登记记录
+                </button>
+                <button class="btn btn-outline-primary" onclick="showBatchAddModal()">
+                    <i class="bi bi-people"></i> 批量登记
+                </button>
+                <button class="btn btn-outline-success" onclick="switchToStats()">
+                    <i class="bi bi-graph-up"></i> 统计分析
+                </button>
+            </div>
+        </div>
+
+        <div id="queryView">
+            <div class="card p-4 mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">大类</label>
+                        <select id="qCategory" class="form-select">
+                            <option value="">全部</option>
+                            <option value="reward">奖励</option>
+                            <option value="punishment">处分</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">类型</label>
+                        <select id="qType" class="form-select">
+                            <option value="">全部</option>
+                            <option value="表彰">表彰</option>
+                            <option value="奖学金">奖学金</option>
+                            <option value="荣誉称号">荣誉称号</option>
+                            <option value="警告">警告</option>
+                            <option value="严重警告">严重警告</option>
+                            <option value="记过">记过</option>
+                            <option value="留校察看">留校察看</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">班级</label>
+                        <select id="qClass" class="form-select">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">开始日期</label>
+                        <input type="date" id="qStartDate" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">结束日期</label>
+                        <input type="date" id="qEndDate" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" onclick="queryRecords()">
+                            <i class="bi bi-search"></i> 查询
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">奖惩记录列表</h6>
+                    <span class="text-muted small" id="recordCount">共 0 条</span>
+                </div>
+                <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-hover align-middle table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>学生</th>
+                                <th>学号</th>
+                                <th>班级</th>
+                                <th>大类</th>
+                                <th>类型</th>
+                                <th>事由</th>
+                                <th>发生日期</th>
+                                <th>影响程度</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordTableBody">
+                            <tr><td colspan="10" class="text-center py-4 text-muted">点击查询按钮加载数据</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="statsView" class="d-none">
+            <div class="card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">统计筛选</h6>
+                    <button class="btn btn-outline-primary btn-sm" onclick="switchToQuery()">
+                        <i class="bi bi-arrow-left"></i> 返回列表
+                    </button>
+                </div>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">统计范围</label>
+                        <select id="statsClassSelect" class="form-select" onchange="loadStatistics()">
+                            <option value="">全校</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card p-3 stat-card">
+                        <small class="text-muted">生效记录总数</small>
+                        <h4 class="fw-bold text-primary" id="statTotal">0</h4>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card p-3 stat-card" style="border-left-color: #198754;">
+                        <small class="text-muted">奖励记录</small>
+                        <h4 class="fw-bold text-success" id="statReward">0</h4>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card p-3 stat-card" style="border-left-color: #dc3545;">
+                        <small class="text-muted">处分记录</small>
+                        <h4 class="fw-bold text-danger" id="statPunishment">0</h4>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card p-3 stat-card" style="border-left-color: #ffc107;">
+                        <small class="text-muted">涉及学生数</small>
+                        <h4 class="fw-bold text-warning" id="statStudents">0</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card p-4">
+                        <h6 class="fw-bold mb-3">各类型数量分布</h6>
+                        <div id="typeDistribution"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card p-4">
+                        <h6 class="fw-bold mb-3">影响程度分布</h6>
+                        <div id="severityDistribution"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3">学生奖惩分布</h6>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>学生</th>
+                                <th>学号</th>
+                                <th>班级</th>
+                                <th>奖励数</th>
+                                <th>处分数</th>
+                                <th>合计</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentDistBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">登记奖惩记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">学生 <span class="text-danger">*</span></label>
+                            <select id="addStudent" class="form-select" required>
+                                <option value="">请选择学生</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">大类 <span class="text-danger">*</span></label>
+                            <select id="addCategory" class="form-select" onchange="onCategoryChange()">
+                                <option value="reward">奖励</option>
+                                <option value="punishment">处分</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">类型 <span class="text-danger">*</span></label>
+                            <select id="addType" class="form-select">
+                                <option value="表彰">表彰</option>
+                                <option value="奖学金">奖学金</option>
+                                <option value="荣誉称号">荣誉称号</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">发生日期 <span class="text-danger">*</span></label>
+                            <input type="date" id="addOccurDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">事由说明 <span class="text-danger">*</span></label>
+                            <textarea id="addReason" class="form-control" rows="3" placeholder="请详细描述事由" required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">影响程度</label>
+                            <select id="addSeverity" class="form-select">
+                                <option value="low">轻微</option>
+                                <option value="medium" selected>中等</option>
+                                <option value="high">严重</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">证明文件（可选）</label>
+                            <input type="file" id="addEvidence" class="form-control">
+                            <input type="hidden" id="addEvidencePath">
+                            <input type="hidden" id="addEvidenceFileName">
+                            <div id="uploadProgress" class="progress mt-1 d-none" style="height: 4px;">
+                                <div class="progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAdd()">确认登记</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="batchAddModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">批量登记（按班级）</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        批量登记将为指定班级的<strong>所有学生</strong>创建同一条奖惩记录，系统自动关联每位学生。
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">班级 <span class="text-danger">*</span></label>
+                            <select id="batchClass" class="form-select">
+                                <option value="">请选择班级</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">大类 <span class="text-danger">*</span></label>
+                            <select id="batchCategory" class="form-select" onchange="onBatchCategoryChange()">
+                                <option value="reward">奖励</option>
+                                <option value="punishment">处分</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">类型 <span class="text-danger">*</span></label>
+                            <select id="batchType" class="form-select">
+                                <option value="表彰">表彰</option>
+                                <option value="奖学金">奖学金</option>
+                                <option value="荣誉称号">荣誉称号</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">发生日期 <span class="text-danger">*</span></label>
+                            <input type="date" id="batchOccurDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">事由说明 <span class="text-danger">*</span></label>
+                            <textarea id="batchReason" class="form-control" rows="3" placeholder="请详细描述事由" required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">影响程度</label>
+                            <select id="batchSeverity" class="form-select">
+                                <option value="low">轻微</option>
+                                <option value="medium" selected>中等</option>
+                                <option value="high">严重</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">证明文件（可选）</label>
+                            <input type="file" id="batchEvidence" class="form-control">
+                            <input type="hidden" id="batchEvidencePath">
+                            <input type="hidden" id="batchEvidenceFileName">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-warning" onclick="submitBatchAdd()">确认批量登记</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="revokeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold">撤销记录</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning small mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        撤销操作不可逆，记录将标记为「已撤销」但不会物理删除，撤销原因将永久留痕。
+                    </div>
+                    <div class="mb-3" id="revokeRecordInfo"></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">撤销原因 <span class="text-danger">*</span></label>
+                        <textarea id="revokeReason" class="form-control" rows="3" placeholder="请说明撤销原因" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" onclick="submitRevoke()">确认撤销</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="detailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">记录详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detailContent"></div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const session = api.getSession();
+        if (!session.user || session.role !== 'teacher') location.href = 'index.html';
+
+        let classList = [];
+        let studentList = [];
+        let currentRecords = [];
+        let revokeTargetId = null;
+
+        async function init() {
+            try {
+                classList = await api.request('/classes/list');
+                studentList = await api.request('/user/list');
+
+                const classOptions = '<option value="">全部</option>' +
+                    classList.map(c => `<option value="${c.cid}">${c.cname}</option>`).join('');
+
+                document.getElementById('qClass').innerHTML = classOptions;
+                document.getElementById('statsClassSelect').innerHTML = '<option value="">全校</option>' +
+                    classList.map(c => `<option value="${c.cid}">${c.cname}</option>`).join('');
+                document.getElementById('batchClass').innerHTML = '<option value="">请选择班级</option>' +
+                    classList.map(c => `<option value="${c.cid}">${c.cname}</option>`).join('');
+
+                populateStudentSelect();
+                queryRecords();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function populateStudentSelect(classId) {
+            const filtered = classId
+                ? studentList.filter(s => s.classId === parseInt(classId))
+                : studentList;
+            document.getElementById('addStudent').innerHTML = '<option value="">请选择学生</option>' +
+                filtered.map(s => `<option value="${s.uid}">${s.username} (${s.userno}) - ${s.classname || ''}</option>`).join('');
+        }
+
+        function onCategoryChange() {
+            const cat = document.getElementById('addCategory').value;
+            const typeSelect = document.getElementById('addType');
+            if (cat === 'reward') {
+                typeSelect.innerHTML = '<option value="表彰">表彰</option><option value="奖学金">奖学金</option><option value="荣誉称号">荣誉称号</option>';
+            } else {
+                typeSelect.innerHTML = '<option value="警告">警告</option><option value="严重警告">严重警告</option><option value="记过">记过</option><option value="留校察看">留校察看</option>';
+            }
+        }
+
+        function onBatchCategoryChange() {
+            const cat = document.getElementById('batchCategory').value;
+            const typeSelect = document.getElementById('batchType');
+            if (cat === 'reward') {
+                typeSelect.innerHTML = '<option value="表彰">表彰</option><option value="奖学金">奖学金</option><option value="荣誉称号">荣誉称号</option>';
+            } else {
+                typeSelect.innerHTML = '<option value="警告">警告</option><option value="严重警告">严重警告</option><option value="记过">记过</option><option value="留校察看">留校察看</option>';
+            }
+        }
+
+        async function queryRecords() {
+            const params = {};
+            const cat = document.getElementById('qCategory').value;
+            const type = document.getElementById('qType').value;
+            const classId = document.getElementById('qClass').value;
+            const startDate = document.getElementById('qStartDate').value;
+            const endDate = document.getElementById('qEndDate').value;
+
+            if (cat) params.category = cat;
+            if (type) params.recordType = type;
+            if (classId) params.classId = classId;
+            if (startDate) params.startDate = startDate;
+            if (endDate) params.endDate = endDate;
+
+            try {
+                currentRecords = await api.discipline.query(params);
+                renderRecordTable();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderRecordTable() {
+            const body = document.getElementById('recordTableBody');
+            document.getElementById('recordCount').innerText = `共 ${currentRecords.length} 条`;
+
+            if (currentRecords.length === 0) {
+                body.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">暂无记录</td></tr>';
+                return;
+            }
+
+            body.innerHTML = currentRecords.map(r => {
+                const catLabel = r.category === 'reward' ? '奖励' : '处分';
+                const catClass = r.category === 'reward' ? 'category-reward' : 'category-punishment';
+                const sevMap = { low: '轻微', medium: '中等', high: '严重' };
+                const sevClass = r.severity ? `severity-${r.severity}` : '';
+                const statusLabel = r.status === 'active' ? '生效' : '已撤销';
+                const statusClass = r.status === 'active' ? 'status-active' : 'status-revoked';
+
+                return `<tr class="${r.status === 'revoked' ? 'table-secondary' : ''}">
+                    <td>${r.studentName || '-'}</td>
+                    <td class="small">${r.studentNo || '-'}</td>
+                    <td class="small">${r.className || '-'}</td>
+                    <td><span class="badge ${catClass}">${catLabel}</span></td>
+                    <td>${r.recordType}</td>
+                    <td class="small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.reason || '').replace(/"/g, '&quot;')}">${r.reason || '-'}</td>
+                    <td class="small">${r.occurDate || '-'}</td>
+                    <td><span class="badge ${sevClass}">${sevMap[r.severity] || r.severity}</span></td>
+                    <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-info" onclick="showDetail(${r.id})" title="详情">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            ${r.status === 'active' ? `<button class="btn btn-sm btn-outline-danger" onclick="showRevokeModal(${r.id})" title="撤销">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>` : ''}
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function showAddModal() {
+            document.getElementById('addStudent').value = '';
+            document.getElementById('addCategory').value = 'reward';
+            document.getElementById('addOccurDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('addReason').value = '';
+            document.getElementById('addSeverity').value = 'medium';
+            document.getElementById('addEvidence').value = '';
+            document.getElementById('addEvidencePath').value = '';
+            document.getElementById('addEvidenceFileName').value = '';
+            onCategoryChange();
+            new bootstrap.Modal(document.getElementById('addModal')).show();
+        }
+
+        async function submitAdd() {
+            const studentId = parseInt(document.getElementById('addStudent').value);
+            const category = document.getElementById('addCategory').value;
+            const recordType = document.getElementById('addType').value;
+            const occurDate = document.getElementById('addOccurDate').value;
+            const reason = document.getElementById('addReason').value.trim();
+            const severity = document.getElementById('addSeverity').value;
+            let evidenceFile = document.getElementById('addEvidencePath').value;
+            let evidenceFileName = document.getElementById('addEvidenceFileName').value;
+
+            if (!studentId || !occurDate || !reason) {
+                api.showToast('请填写必填项', 'warning');
+                return;
+            }
+
+            const fileInput = document.getElementById('addEvidence');
+            if (fileInput.files.length > 0) {
+                try {
+                    const res = await api.uploadFile(fileInput.files[0]);
+                    if (res.success) {
+                        evidenceFile = res.url;
+                        evidenceFileName = res.originalName;
+                    }
+                } catch (err) {
+                    console.error('文件上传失败', err);
+                }
+            }
+
+            const record = {
+                studentId,
+                category,
+                recordType,
+                occurDate,
+                reason,
+                severity,
+                evidenceFile,
+                evidenceFileName,
+                creatorId: session.user.tid,
+                creatorName: session.user.tname
+            };
+
+            try {
+                await api.discipline.addRecord(record);
+                api.showToast('登记成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+                queryRecords();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function showBatchAddModal() {
+            document.getElementById('batchClass').value = '';
+            document.getElementById('batchCategory').value = 'reward';
+            document.getElementById('batchOccurDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('batchReason').value = '';
+            document.getElementById('batchSeverity').value = 'medium';
+            document.getElementById('batchEvidence').value = '';
+            document.getElementById('batchEvidencePath').value = '';
+            document.getElementById('batchEvidenceFileName').value = '';
+            onBatchCategoryChange();
+            new bootstrap.Modal(document.getElementById('batchAddModal')).show();
+        }
+
+        async function submitBatchAdd() {
+            const classId = parseInt(document.getElementById('batchClass').value);
+            const category = document.getElementById('batchCategory').value;
+            const recordType = document.getElementById('batchType').value;
+            const occurDate = document.getElementById('batchOccurDate').value;
+            const reason = document.getElementById('batchReason').value.trim();
+            const severity = document.getElementById('batchSeverity').value;
+            let evidenceFile = document.getElementById('batchEvidencePath').value;
+            let evidenceFileName = document.getElementById('batchEvidenceFileName').value;
+
+            if (!classId || !occurDate || !reason) {
+                api.showToast('请填写必填项', 'warning');
+                return;
+            }
+
+            const fileInput = document.getElementById('batchEvidence');
+            if (fileInput.files.length > 0) {
+                try {
+                    const res = await api.uploadFile(fileInput.files[0]);
+                    if (res.success) {
+                        evidenceFile = res.url;
+                        evidenceFileName = res.originalName;
+                    }
+                } catch (err) {
+                    console.error('文件上传失败', err);
+                }
+            }
+
+            try {
+                await api.discipline.batchAdd({
+                    classId,
+                    category,
+                    recordType,
+                    occurDate,
+                    reason,
+                    severity,
+                    evidenceFile,
+                    evidenceFileName,
+                    creatorId: session.user.tid,
+                    creatorName: session.user.tname
+                });
+                api.showToast('批量登记成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('batchAddModal')).hide();
+                queryRecords();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function showRevokeModal(recordId) {
+            revokeTargetId = recordId;
+            const record = currentRecords.find(r => r.id === recordId);
+            if (record) {
+                document.getElementById('revokeRecordInfo').innerHTML = `
+                    <p class="mb-1"><strong>学生：</strong>${record.studentName} (${record.studentNo})</p>
+                    <p class="mb-1"><strong>类型：</strong>${record.category === 'reward' ? '奖励' : '处分'} - ${record.recordType}</p>
+                    <p class="mb-0"><strong>事由：</strong>${record.reason}</p>
+                `;
+            }
+            document.getElementById('revokeReason').value = '';
+            new bootstrap.Modal(document.getElementById('revokeModal')).show();
+        }
+
+        async function submitRevoke() {
+            const revokeReason = document.getElementById('revokeReason').value.trim();
+            if (!revokeReason) {
+                api.showToast('请填写撤销原因', 'warning');
+                return;
+            }
+
+            try {
+                await api.discipline.revoke({
+                    recordId: revokeTargetId,
+                    revokeReason,
+                    teacherId: session.user.tid,
+                    teacherName: session.user.tname
+                });
+                api.showToast('撤销成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('revokeModal')).hide();
+                queryRecords();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function showDetail(recordId) {
+            const r = currentRecords.find(rec => rec.id === recordId);
+            if (!r) return;
+
+            const catLabel = r.category === 'reward' ? '奖励' : '处分';
+            const catClass = r.category === 'reward' ? 'category-reward' : 'category-punishment';
+            const sevMap = { low: '轻微', medium: '中等', high: '严重' };
+            const statusLabel = r.status === 'active' ? '生效' : '已撤销';
+            const statusClass = r.status === 'active' ? 'status-active' : 'status-revoked';
+
+            let html = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">学生</p>
+                        <p class="fw-bold mb-0">${r.studentName} (${r.studentNo})</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">班级</p>
+                        <p class="mb-0">${r.className || '-'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">大类 / 类型</p>
+                        <p class="mb-0"><span class="badge ${catClass}">${catLabel}</span> ${r.recordType}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">影响程度</p>
+                        <p class="mb-0">${sevMap[r.severity] || r.severity}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">发生日期</p>
+                        <p class="mb-0">${r.occurDate || '-'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">状态</p>
+                        <p class="mb-0"><span class="badge ${statusClass}">${statusLabel}</span></p>
+                    </div>
+                    <div class="col-md-12">
+                        <p class="text-muted small mb-1">事由说明</p>
+                        <p class="mb-0">${r.reason || '-'}</p>
+                    </div>
+                    ${r.evidenceFile ? `
+                    <div class="col-md-12">
+                        <p class="text-muted small mb-1">证明文件</p>
+                        <p class="mb-0"><a href="${r.evidenceFile}" target="_blank"><i class="bi bi-paperclip"></i> ${r.evidenceFileName || '查看文件'}</a></p>
+                    </div>` : ''}
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">登记人</p>
+                        <p class="mb-0">${r.creatorName || '-'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">登记时间</p>
+                        <p class="mb-0">${r.createTime || '-'}</p>
+                    </div>`;
+
+            if (r.status === 'revoked') {
+                html += `
+                    <div class="col-12"><hr></div>
+                    <div class="col-12">
+                        <p class="text-danger fw-bold small mb-2"><i class="bi bi-exclamation-triangle me-1"></i>撤销信息</p>
+                    </div>
+                    <div class="col-md-12">
+                        <p class="text-muted small mb-1">撤销原因</p>
+                        <p class="mb-0 text-danger">${r.revokeReason || '-'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">撤销人</p>
+                        <p class="mb-0">${r.revokeTeacherName || '-'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted small mb-1">撤销时间</p>
+                        <p class="mb-0">${r.revokeTime || '-'}</p>
+                    </div>`;
+            }
+
+            html += '</div>';
+            document.getElementById('detailContent').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('detailModal')).show();
+        }
+
+        function switchToStats() {
+            document.getElementById('queryView').classList.add('d-none');
+            document.getElementById('statsView').classList.remove('d-none');
+            loadStatistics();
+        }
+
+        function switchToQuery() {
+            document.getElementById('statsView').classList.add('d-none');
+            document.getElementById('queryView').classList.remove('d-none');
+        }
+
+        async function loadStatistics() {
+            const classId = document.getElementById('statsClassSelect').value;
+            try {
+                const stats = await api.discipline.statistics(classId || null);
+                renderStatistics(stats);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderStatistics(stats) {
+            document.getElementById('statTotal').innerText = stats.totalRecords || 0;
+            const catCount = stats.categoryCount || {};
+            document.getElementById('statReward').innerText = catCount['reward'] || 0;
+            document.getElementById('statPunishment').innerText = catCount['punishment'] || 0;
+            const studentDist = stats.studentDistribution || [];
+            document.getElementById('statStudents').innerText = studentDist.length;
+
+            const typeCount = stats.typeCount || {};
+            const maxType = Math.max(...Object.values(typeCount), 1);
+            document.getElementById('typeDistribution').innerHTML = Object.entries(typeCount).map(([type, count]) => {
+                const pct = (count / maxType * 100).toFixed(0);
+                const isReward = ['表彰', '奖学金', '荣誉称号'].includes(type);
+                const color = isReward ? 'bg-success' : 'bg-danger';
+                return `<div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>${type}</span>
+                        <span>${count} 条</span>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar ${color}" style="width: ${pct}%"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const severityCount = stats.severityCount || {};
+            const maxSev = Math.max(...Object.values(severityCount), 1);
+            const sevLabels = { low: '轻微', medium: '中等', high: '严重' };
+            const sevColors = { low: 'bg-info', medium: 'bg-warning', high: 'bg-danger' };
+            document.getElementById('severityDistribution').innerHTML = Object.entries(severityCount).map(([sev, count]) => {
+                const pct = (count / maxSev * 100).toFixed(0);
+                return `<div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>${sevLabels[sev] || sev}</span>
+                        <span>${count} 条</span>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar ${sevColors[sev] || 'bg-secondary'}" style="width: ${pct}%"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('studentDistBody').innerHTML = studentDist.map(s => {
+                return `<tr>
+                    <td>${s.studentName || '-'}</td>
+                    <td class="small">${s.studentNo || '-'}</td>
+                    <td class="small">${s.className || '-'}</td>
+                    <td><span class="badge bg-success">${s.rewardCount}</span></td>
+                    <td><span class="badge bg-danger">${s.punishmentCount}</span></td>
+                    <td class="fw-bold">${s.totalCount}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

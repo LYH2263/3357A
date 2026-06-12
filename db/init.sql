@@ -862,3 +862,56 @@ INSERT INTO `consultation_booking` (`slot_id`, `student_id`, `student_name`, `st
 (12, 1, '小明', 'S2021001', '已过期的预约', 'completed', '2026-06-08 10:00:00'),
 (12, 2, '小红', 'S2021002', '已过期的预约2', 'no_show', '2026-06-08 11:00:00'),
 (12, 3, '小王', 'S2021003', '已过期的预约3', 'cancelled', '2026-06-08 09:00:00');
+
+-- (32) 奖惩记录表
+CREATE TABLE `discipline_record` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `student_id` INT NOT NULL COMMENT '学生ID(user.uid)',
+    `student_name` VARCHAR(50) COMMENT '学生姓名(冗余)',
+    `student_no` VARCHAR(50) COMMENT '学号(冗余)',
+    `class_id` INT COMMENT '班级ID(classes.cid)',
+    `class_name` VARCHAR(100) COMMENT '班级名称(冗余)',
+    `category` VARCHAR(20) NOT NULL COMMENT '大类：reward-奖励，punishment-处分',
+    `record_type` VARCHAR(50) NOT NULL COMMENT '类型：表彰/奖学金/荣誉称号/警告/记过/严重警告/留校察看',
+    `reason` TEXT NOT NULL COMMENT '事由说明',
+    `occur_date` DATE NOT NULL COMMENT '发生日期',
+    `severity` VARCHAR(20) DEFAULT 'medium' COMMENT '影响程度：low-轻微，medium-中等，high-严重',
+    `evidence_file` VARCHAR(500) DEFAULT NULL COMMENT '证明文件路径(可选)',
+    `evidence_file_name` VARCHAR(255) DEFAULT NULL COMMENT '证明文件原始名称(可选)',
+    `status` VARCHAR(20) DEFAULT 'active' COMMENT '状态：active-生效，revoked-已撤销',
+    `revoke_reason` TEXT DEFAULT NULL COMMENT '撤销原因',
+    `revoke_time` DATETIME DEFAULT NULL COMMENT '撤销时间',
+    `revoke_teacher_id` INT DEFAULT NULL COMMENT '撤销操作教师ID',
+    `revoke_teacher_name` VARCHAR(50) DEFAULT NULL COMMENT '撤销操作教师姓名(冗余)',
+    `creator_id` INT NOT NULL COMMENT '登记教师ID(teacher.tid)',
+    `creator_name` VARCHAR(50) COMMENT '登记教师姓名(冗余)',
+    `batch_id` VARCHAR(64) DEFAULT NULL COMMENT '批量登记批次ID，同一批次共享',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY `idx_student` (`student_id`),
+    KEY `idx_class` (`class_id`),
+    KEY `idx_category` (`category`),
+    KEY `idx_record_type` (`record_type`),
+    KEY `idx_status` (`status`),
+    KEY `idx_occur_date` (`occur_date`),
+    KEY `idx_batch_id` (`batch_id`),
+    KEY `idx_student_status` (`student_id`, `status`),
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`uid`) ON DELETE CASCADE,
+    FOREIGN KEY (`class_id`) REFERENCES `classes`(`cid`) ON DELETE SET NULL,
+    FOREIGN KEY (`creator_id`) REFERENCES `teacher`(`tid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='奖惩记录表';
+
+-- Seeding discipline records
+INSERT INTO `discipline_record` (`student_id`, `student_name`, `student_no`, `class_id`, `class_name`, `category`, `record_type`, `reason`, `occur_date`, `severity`, `status`, `creator_id`, `creator_name`, `batch_id`) VALUES
+(1, '小明', 'S2021001', 1, '计算机2101', 'reward', '表彰', '在省级程序设计竞赛中获得一等奖，为学校和班级争光', '2026-03-15', 'high', 'active', 1, '张老师', NULL),
+(1, '小明', 'S2021001', 1, '计算机2101', 'reward', '奖学金', '2025-2026学年一等奖学金，综合成绩排名专业前5%', '2026-04-01', 'medium', 'active', 1, '张老师', NULL),
+(3, '小王', 'S2021003', 2, '计算机2102', 'reward', '奖学金', '2025-2026学年特等奖学金，综合成绩排名专业第1', '2026-04-01', 'high', 'active', 2, '李老师', NULL),
+(6, '小孙', 'S2021006', 3, '软件2101', 'reward', '荣誉称号', '被评为2025-2026学年三好学生', '2026-05-10', 'medium', 'active', 5, '孙老师', NULL),
+(14, '小蒋', 'S2021014', 7, 'AI2101', 'reward', '表彰', '在全国人工智能创新大赛中获得银奖', '2026-03-20', 'high', 'active', 4, '赵老师', NULL),
+(2, '小红', 'S2021002', 1, '计算机2101', 'punishment', '警告', '连续三次未按时提交作业', '2026-02-28', 'low', 'active', 1, '张老师', NULL),
+(4, '小李', 'S2021004', 2, '计算机2102', 'punishment', '记过', '考试作弊行为，违反学术诚信', '2026-05-05', 'high', 'active', 2, '李老师', NULL),
+(7, '小周', 'S2021007', 4, '软件2102', 'punishment', '严重警告', '在实验室内违反安全操作规程', '2026-04-18', 'medium', 'revoked', 5, '孙老师', NULL),
+(16, '小韩', 'S2021016', 8, '物联网2101', 'punishment', '警告', '多次旷课，累计超过规定次数', '2026-03-10', 'low', 'active', 8, '郑老师', NULL);
+
+-- Update revoke info for record id 8
+UPDATE `discipline_record` SET `revoke_reason`='经核实，该学生当时已获得安全操作授权，属于误判', `revoke_time`='2026-05-20 14:30:00', `revoke_teacher_id`=5, `revoke_teacher_name`='孙老师' WHERE `id`=8;

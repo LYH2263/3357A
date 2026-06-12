@@ -12,6 +12,31 @@
             color: var(--primary-color) !important;
             border-bottom: 2px solid var(--primary-color);
         }
+        .timeline-item { position: relative; padding-left: 30px; margin-bottom: 1rem; }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: -1rem;
+            width: 2px;
+            background: #dee2e6;
+        }
+        .timeline-item:last-child::before { display: none; }
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #0d6efd;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px #dee2e6;
+        }
+        .timeline-item.reward-item::after { background: #198754; }
+        .timeline-item.punishment-item::after { background: #dc3545; }
     </style>
 </head>
 
@@ -35,6 +60,7 @@
                     <li class="nav-link px-3" role="button" onclick="window.location.href='repository-student.html'">教学资料库</li>
                     <li class="nav-link px-3" role="button" onclick="window.location.href='album-student.html'"><i class="bi bi-images me-1"></i>班级相册</li>
                     <li class="nav-link px-3" role="button" onclick="window.location.href='consultation-student.html'"><i class="bi bi-calendar-check me-1"></i>答疑预约</li>
+                    <li class="nav-link px-3" role="button" onclick="showSection('discipline')"><i class="bi bi-award me-1"></i>奖惩档案</li>
                 </ul>
                 <div class="d-flex align-items-center">
                     <span id="userInfo" class="me-3 text-muted small"></span>
@@ -247,6 +273,44 @@
             </div>
         </div>
 
+        <!-- Discipline Section -->
+        <div id="discipline-section" class="section d-none">
+            <div class="card p-4 mb-4">
+                <h5 class="fw-bold mb-3"><i class="bi bi-award text-primary me-2"></i>我的奖惩档案</h5>
+                <p class="text-muted small mb-3">此处展示您的奖惩记录，仅可查看，不可修改。如有疑问请联系班主任或辅导员。</p>
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-start border-success border-3">
+                            <small class="text-muted">奖励记录</small>
+                            <h4 class="fw-bold text-success" id="myRewardCount">0</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-start border-danger border-3">
+                            <small class="text-muted">处分记录</small>
+                            <h4 class="fw-bold text-danger" id="myPunishmentCount">0</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-start border-warning border-3">
+                            <small class="text-muted">已撤销</small>
+                            <h4 class="fw-bold text-secondary" id="myRevokedCount">0</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-start border-primary border-3">
+                            <small class="text-muted">优秀标记</small>
+                            <h4 class="fw-bold" id="myYouxiuok">-</h4>
+                        </div>
+                    </div>
+                </div>
+                <h6 class="fw-bold mb-3">奖惩时间线</h6>
+                <div id="discipline-timeline">
+                    <div class="text-center py-4 text-muted">加载中...</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Calendar Section -->
         <div id="calendar-section" class="section d-none">
             <div class="card p-4 mb-4">
@@ -318,6 +382,7 @@
             if (id === 'score') loadMyScores();
             if (id === 'evaluation') loadEvalActivities();
             if (id === 'calendar') loadStudentCalendar();
+            if (id === 'discipline') loadMyDiscipline();
         }
 
         async function loadNews() {
@@ -1040,6 +1105,63 @@
             const mi = String(date.getMinutes()).padStart(2, '0');
             const s = String(date.getSeconds()).padStart(2, '0');
             return `${y}-${m}-${d}T${h}:${mi}:${s}`;
+        }
+
+        async function loadMyDiscipline() {
+            const container = document.getElementById('discipline-timeline');
+            container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+            try {
+                const records = await api.discipline.studentRecords(session.user.uid);
+
+                const rewardCount = records.filter(r => r.category === 'reward' && r.status === 'active').length;
+                const punishmentCount = records.filter(r => r.category === 'punishment' && r.status === 'active').length;
+                const revokedCount = records.filter(r => r.status === 'revoked').length;
+
+                document.getElementById('myRewardCount').innerText = rewardCount;
+                document.getElementById('myPunishmentCount').innerText = punishmentCount;
+                document.getElementById('myRevokedCount').innerText = revokedCount;
+                document.getElementById('myYouxiuok').innerText = session.user.youxiuok || '否';
+
+                if (records.length === 0) {
+                    container.innerHTML = '<div class="text-center py-4 text-muted">暂无奖惩记录</div>';
+                    return;
+                }
+
+                const sevMap = { low: '轻微', medium: '中等', high: '严重' };
+                container.innerHTML = records.map(r => {
+                    const catLabel = r.category === 'reward' ? '奖励' : '处分';
+                    const catClass = r.category === 'reward' ? 'text-success' : 'text-danger';
+                    const catBadge = r.category === 'reward' ? 'bg-success' : 'bg-danger';
+                    const timelineClass = r.category === 'reward' ? 'reward-item' : 'punishment-item';
+                    const isRevoked = r.status === 'revoked';
+
+                    return `<div class="timeline-item ${timelineClass} ${isRevoked ? 'opacity-50' : ''}">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <div>
+                                <span class="badge ${catBadge} me-1">${catLabel}</span>
+                                <strong class="${isRevoked ? 'text-decoration-line-through text-muted' : ''}">${r.recordType}</strong>
+                                <span class="badge bg-light text-dark ms-1">${sevMap[r.severity] || ''}</span>
+                                ${isRevoked ? '<span class="badge bg-secondary ms-1">已撤销</span>' : ''}
+                            </div>
+                            <small class="text-muted">${r.occurDate || ''}</small>
+                        </div>
+                        <p class="mb-1 small ${isRevoked ? 'text-muted' : ''}">${r.reason || ''}</p>
+                        <div class="small text-muted">
+                            <span>登记人：${r.creatorName || '-'}</span>
+                            <span class="ms-3">登记时间：${r.createTime ? r.createTime.replace('T', ' ').substring(0, 16) : '-'}</span>
+                            ${r.evidenceFile ? `<span class="ms-3"><a href="${r.evidenceFile}" target="_blank"><i class="bi bi-paperclip"></i>证明文件</a></span>` : ''}
+                        </div>
+                        ${isRevoked ? `
+                        <div class="mt-2 p-2 rounded small" style="background:#f8f9fa">
+                            <span class="text-danger"><i class="bi bi-arrow-counterclockwise me-1"></i>撤销原因：${r.revokeReason || '-'}</span>
+                            <span class="text-muted ms-2">撤销人：${r.revokeTeacherName || '-'} | ${r.revokeTime ? r.revokeTime.replace('T', ' ').substring(0, 16) : '-'}</span>
+                        </div>` : ''}
+                    </div>`;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = '<div class="text-center py-4 text-danger">加载失败</div>';
+            }
         }
     </script>
 </body>

@@ -209,5 +209,37 @@ const api = {
                 body: JSON.stringify({ id })
             });
         }
+    },
+
+    discipline: {
+        async addRecord(data) {
+            return api.request('/discipline/add', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        },
+        async batchAdd(data) {
+            return api.request('/discipline/batch-add', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        },
+        async revoke(data) {
+            return api.request('/discipline/revoke', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        },
+        async studentRecords(studentId) {
+            return api.request(`/discipline/student?studentId=${studentId}`);
+        },
+        async query(params = {}) {
+            const query = new URLSearchParams(params).toString();
+            return api.request(`/discipline/query${query ? '?' + query : ''}`);
+        },
+        async statistics(classId) {
+            const query = classId ? `?classId=${classId}` : '';
+            return api.request(`/discipline/statistics${query}`);
+        }
     }
 };
